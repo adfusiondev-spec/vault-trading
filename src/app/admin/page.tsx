@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Crown, Building2, Globe, Database, LogOut, ShieldCheck, ShieldAlert, Check, Plus, AlertTriangle, Key, X, Settings2, Power, Play, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
+import { Crown, Building2, Globe, Database, LogOut, ShieldCheck, ShieldAlert, Check, Plus, DollarSign, AlertTriangle, Key, X, Settings2, Power, Play, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { FinancialDesk } from '@/components/admin/FinancialDesk'
 
 // Extended Tenant Data Structure
 export type Tenant = {
@@ -36,7 +37,7 @@ const INITIAL_TENANTS: Tenant[] = [
 export default function SuperAdminDashboard() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState<'tenants' | 'system' | 'audit'>('tenants')
+  const [activeTab, setActiveTab] = useState<'tenants' | 'system' | 'audit' | 'financial'>('tenants')
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
@@ -400,6 +401,7 @@ export default function SuperAdminDashboard() {
           {[
             { id: 'tenants', icon: Building2, label: 'Leasing Companies' },
             { id: 'system', icon: Database, label: 'Global Architecture' },
+            { id: 'financial', icon: DollarSign, label: 'Financial Desk' },
             { id: 'audit', icon: ShieldCheck, label: 'Security & Audit Logs' },
           ].map(item => {
             const Icon = item.icon
@@ -587,7 +589,9 @@ export default function SuperAdminDashboard() {
               </div>
             )}
             
-            {activeTab !== 'tenants' && (
+            {activeTab === 'financial' && <FinancialDesk />}
+            
+            {activeTab !== 'tenants' && activeTab !== 'financial' && (
               <div className="crm-section fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5 }}>
                 <Key size={48} color="#FFD700" style={{ marginBottom: 20 }} />
                 <h3 style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>Authorized Personnel Only</h3>

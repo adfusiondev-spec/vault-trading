@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Activity, DollarSign, LogOut, ShieldCheck, AlertCircle, Check, X, Bell } from 'lucide-react'
+import { Users, Activity, DollarSign, LogOut, ShieldCheck, AlertCircle, Check, X, Bell, Eye, Settings } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import PaymentSettingsPanel from '@/components/sub-admin/PaymentSettingsPanel'
+import { usePendingTransactions } from '@/hooks/usePendingTransactions'
 
 // Mock Data
 const INITIAL_TRADES: any[] = []
@@ -13,14 +15,14 @@ const INITIAL_LEADS: any[] = []
 export default function SubAdminDashboard() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'financial'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'financial' | 'payment-settings'>('monitor')
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
 
   // State
   const [trades, setTrades] = useState(INITIAL_TRADES)
-  const [financials, setFinancials] = useState(INITIAL_FINANCIALS)
+  const { pending, reviewTransaction, getProofUrl } = usePendingTransactions()
   const [traders, setTraders] = useState<any[]>([])
   const [isTraderModalOpen, setIsTraderModalOpen] = useState(false)
   const [creatingTrader, setCreatingTrader] = useState(false)
@@ -113,27 +115,9 @@ export default function SubAdminDashboard() {
 
         const traderIds: string[] = (traderData || []).map((t: any) => t.id)
 
-        // ── Step 2: Sync Financial Requests (filter by known trader IDs) ──
         if (traderIds.length > 0) {
-          const { data: txData, error: txError } = await supabase
-            .from('transactions')
-            .select('*, profiles:user_id(email, full_name)')
-            .in('user_id', traderIds)
-            .order('created_at', { ascending: false })
-
-          if (txError) console.error('Transaction fetch error:', txError.message)
-
-          if (txData) {
-            const formattedTxs = txData.map((tx: any) => ({
-              id: tx.id,
-              userEmail: tx.profiles?.email || tx.user_id,
-              type: tx.type === 'deposit' ? 'Deposit' : 'Withdrawal',
-              amount: parseFloat(tx.amount || '0'),
-              currency: tx.currency,
-              status: tx.status.charAt(0).toUpperCase() + tx.status.slice(1)
-            }))
-            setFinancials(formattedTxs)
-          }
+          // ── Step 2 ──
+          // (Financial Requests are now handled natively by usePendingTransactions hook)
 
           // ── Step 3: Sync Live Trades (filter by known trader IDs) ──
           const { data: oData, error: oError } = await supabase
@@ -159,7 +143,6 @@ export default function SubAdminDashboard() {
           }
         } else {
           // No traders yet, clear lists
-          setFinancials([])
           setTrades([])
         }
       } catch (e) {
@@ -211,16 +194,10 @@ export default function SubAdminDashboard() {
 
   const handleFinancialAction = async (id: string, action: 'approve' | 'reject') => {
     const newStatus = action === 'approve' ? 'approved' : 'rejected' // matching database enum
-    const supabase = createClient()
+    const result = await reviewTransaction(id, newStatus)
     
-    // Optimistic UI update
-    setFinancials(prev => prev.map(f => f.id === id ? { ...f, status: action === 'approve' ? 'Approved' : 'Rejected' } : f))
-    
-    const { error } = await supabase.from('transactions').update({ status: newStatus }).eq('id', id)
-    
-    if (error) {
-      alert(`Error updating transaction: ${error.message}`)
-      // Rollback UI maybe? For now just alert.
+    if (!result.success) {
+      alert(`Error updating transaction: ${result.error}`)
     }
   }
 
@@ -303,7 +280,7 @@ export default function SubAdminDashboard() {
   return (
     <div style={{
       minHeight: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
-      background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'hidden'
+      background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'auto'
     }}>
       
       {/* ── Top Navigation Bar ── */}
@@ -340,7 +317,7 @@ export default function SubAdminDashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, height: 0, minHeight: 0 }}>
         
         {/* ── Sidebar CRM Navigation ── */}
         <div style={{
@@ -351,6 +328,7 @@ export default function SubAdminDashboard() {
             { id: 'monitor', icon: Activity, label: 'Live Trade Monitor' },
             { id: 'leads', icon: Users, label: 'Sales & Leads Tracker' },
             { id: 'financial', icon: DollarSign, label: 'Financial Desk' },
+            { id: 'payment-settings', icon: Settings, label: 'Payment Settings' },
           ].map(item => {
             const Icon = item.icon
             const isActive = activeTab === item.id
@@ -374,7 +352,7 @@ export default function SubAdminDashboard() {
         </div>
 
         {/* ── Main CRM Area ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#06080a', overflowY: 'auto' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#06080a', overflowY: 'auto', minHeight: 0 }}>
           
           {/* Top Summary Bar */}
           <div style={{
@@ -382,7 +360,7 @@ export default function SubAdminDashboard() {
           }}>
             <SummaryCard title="Total Clients" value={traders.length.toString()} icon={Users} color="#fff" />
             <SummaryCard title="Active Trades" value={trades.length.toString()} icon={Activity} color="#FFD700" />
-            <SummaryCard title="Pending Financials" value={financials.filter(f => f.status === 'Pending').length.toString()} icon={DollarSign} color="#26a69a" />
+            <SummaryCard title="Pending Financials" value={pending.length.toString()} icon={DollarSign} color="#26a69a" />
           </div>
 
           <div style={{ padding: 24, flex: 1 }}>
@@ -560,20 +538,31 @@ export default function SubAdminDashboard() {
                         <th style={{ padding: '12px 16px', fontWeight: 600 }}>USER EMAIL</th>
                         <th style={{ padding: '12px 16px', fontWeight: 600 }}>TYPE</th>
                         <th style={{ padding: '12px 16px', fontWeight: 600 }}>AMOUNT</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>RECEIPT</th>
                         <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>ACTION PENDING</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {financials.filter(f => f.status === 'Pending').length === 0 ? (
-                        <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>All financial requests have been processed.</td></tr>
-                      ) : financials.filter(f => f.status === 'Pending').map(fin => (
+                      {pending.length === 0 ? (
+                        <tr><td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>All financial requests have been processed.</td></tr>
+                      ) : pending.map((fin: any) => (
                         <tr key={fin.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#8a8e9b' }}>{fin.id}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 500 }}>{fin.userEmail}</td>
+                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#8a8e9b' }}>{fin.id.substring(0,8)}...</td>
+                          <td style={{ padding: '12px 16px', fontWeight: 500 }}>{fin.profiles?.email || 'Unknown'}</td>
                           <td style={{ padding: '12px 16px' }}>
-                            <span style={{ padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: fin.type === 'Deposit' ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)', color: fin.type === 'Deposit' ? '#26a69a' : '#ef5350' }}>{fin.type}</span>
+                            <span style={{ padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: fin.type === 'deposit' ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)', color: fin.type === 'deposit' ? '#26a69a' : '#ef5350' }}>{fin.type.toUpperCase()}</span>
                           </td>
-                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#fff', fontWeight: 600 }}>${fin.amount.toLocaleString()} <span style={{ color: '#8a8e9b', fontSize: 10 }}>{fin.currency}</span></td>
+                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#fff', fontWeight: 600 }}>${Number(fin.amount).toLocaleString()} <span style={{ color: '#8a8e9b', fontSize: 10 }}>{fin.currency}</span></td>
+                          <td style={{ padding: '12px 16px' }}>
+                            {fin.proof_of_payment_url ? (
+                              <button onClick={async () => {
+                                const url = await getProofUrl(fin.proof_of_payment_url)
+                                if (url) window.open(url, '_blank')
+                              }} style={{ background: 'transparent', border: '1px solid #787b86', display: 'flex', alignItems: 'center', gap: 6, color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 10, cursor: 'pointer' }}>
+                                <Eye size={12}/> View Image
+                              </button>
+                            ) : <span style={{ color: '#555', fontSize: 10 }}>No Receipt</span>}
+                          </td>
                           <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                               <button onClick={() => handleFinancialAction(fin.id, 'reject')} style={{
@@ -596,6 +585,13 @@ export default function SubAdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* ── Payment Settings ── */}
+            {activeTab === 'payment-settings' && (
+              <div className="crm-section fade-in" style={{ overflowY: 'auto', height: '100%' }}>
+                <PaymentSettingsPanel />
               </div>
             )}
             

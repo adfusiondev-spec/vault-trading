@@ -10,6 +10,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useMarketData, type TickerData, type PriceMap } from '@/hooks/useMarketData'
 import dynamic from 'next/dynamic'
+import { useTransactions } from '@/hooks/useTransactions'
 
 const CandlestickChart = dynamic(() => import('@/components/CandlestickChart'), { ssr: false })
 
@@ -131,9 +132,35 @@ export default function Dashboard() {
   const [bottomTab, setBottomTab] = useState('statements')
   
   const [actionTab, setActionTab] = useState('deposit') // deposit | withdraw
-  const [actionAmount, setActionAmount] = useState('')
-  const [actionCurrency, setActionCurrency] = useState('USD')
   const [showToast, setShowToast] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalType, setModalType] = useState<'deposit' | 'withdrawal'>('deposit')
+  const [modalAmount, setModalAmount] = useState('')
+  const [modalMethod, setModalMethod] = useState('')
+  const [modalFile, setModalFile] = useState<File | null>(null)
+  const [modalError, setModalError] = useState('')
+  const [modalLoading, setModalLoading] = useState(false)
+  const [companySettings, setCompanySettings] = useState<any>({
+    usdt_address: 'TRX7xK9mNpQwE3rBvYsD2uF8hGjL4cP6nA',
+    usdt_network: 'TRC20',
+    usdt_is_active: true,
+    btc_address: '1A2b3C4d5E6f7G8h9I0jK1L2m3N4o5P6q7',
+    btc_is_active: true,
+    bank_name: 'CIH Bank',
+    bank_account_holder: 'The Vault Trading',
+    bank_rib: '230 780 4567890123456789 12',
+    bank_is_active: true,
+  })
+  const [copiedField, setCopiedField] = useState('')
+
+  const closeModal = () => {
+    setModalOpen(false)
+    setModalAmount('')
+    setModalMethod('')
+    setModalFile(null)
+    setModalError('')
+    setModalLoading(false)
+  }
 
   const { prices, connected } = useMarketData()
   const supabase = createClient()
@@ -141,24 +168,22 @@ export default function Dashboard() {
 
   const refresh = useCallback(async (uid: string) => {
     if (!uid) return
-    const { data: w } = await supabase.from('wallets').select('*').eq('user_id', uid).single()
-    if (w) setWal(w)
-    
     const { data: o } = await supabase.from('trades').select('*').eq('user_id', uid).order('created_at', { ascending: false })
     if (o) setOrders(o.map((x:any)=>({ id: x.id, type: x.type==='buy'?'Buy':'Sell', symbol: x.symbol, label: x.symbol, amountUSD: Number(x.amount), qty: Number(x.quantity), entryPrice: Number(x.entry_price), status: x.status==='open'?'Open':'Completed' })))
-    
-    const { data: t } = await supabase.from('transactions').select('*').eq('user_id', uid).order('created_at', { ascending: false })
-    if (t) setTxs(t.map((x:any)=>({ 
-      id: x.id, 
-      type: x.type==='deposit'?'DEPOSIT':'WITHDRAWAL', 
-      method: x.payment_method || 'USDT-TRC20', 
-      amount: Number(x.amount), 
-      currency: x.currency, 
-      status: x.status.charAt(0).toUpperCase()+x.status.slice(1), 
-      timestamp: new Date(x.created_at).getTime(),
-      reference: `DEP-${new Date(x.created_at).getTime()}`
-    })))
   }, [supabase])
+
+  const { submitRequest, wallet, transactions } = useTransactions(user?.id)
+
+  const uiTxs = (transactions || []).map((x:any) => ({ 
+    id: x.id, 
+    type: x.type==='deposit'?'DEPOSIT':'WITHDRAWAL', 
+    method: x.payment_method || 'USDT-TRC20', 
+    amount: Number(x.amount), 
+    currency: x.currency, 
+    status: x.status.charAt(0).toUpperCase()+x.status.slice(1), 
+    timestamp: new Date(x.created_at).getTime(),
+    reference: `DEP-${new Date(x.created_at).getTime()}`
+  }))
 
   useEffect(() => {
     ensureFlashStyles()
@@ -168,7 +193,14 @@ export default function Dashboard() {
       if (session?.user) {
         userIdRef.current = session.user.id
         const { data: p } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-        if (p) { setUser(p); refresh(session.user.id) }
+        if (p) { 
+          setUser(p); 
+          refresh(session.user.id);
+          fetch('/api/payment-settings/user')
+            .then(r => r.json())
+            .then(({ settings }) => { if (settings) setCompanySettings(settings) })
+            .catch(() => {})
+        }
       } else router.push('/login')
     }
     init()
@@ -189,20 +221,7 @@ export default function Dashboard() {
     return () => { supabase.removeChannel(chan) }
   }, [router, refresh, supabase])
 
-  const handleActionSubmit = async () => {
-    if (!user || parseFloat(actionAmount) <= 0) return
-    let tType = actionTab === 'deposit' ? 'deposit' : 'withdrawal'
-    const { error } = await supabase.from('transactions').insert({ 
-      user_id: user.id, type: tType, amount: parseFloat(actionAmount), currency: actionCurrency, payment_method: 'USDT-TRC20', status: 'pending' 
-    })
-    if (error) alert(error.message)
-    else { 
-      refresh(user.id); 
-      setActionAmount('')
-      setShowToast(true); 
-      setTimeout(() => setShowToast(false), 3000); 
-    }
-  }
+  // Removed old handleActionSubmit due to Modal logic
 
   const execTrade = async (type: 'buy' | 'sell') => {
     if (!user || parseFloat(tradeAmt) <= 0 || isNaN(parseFloat(tradeAmt))) return
@@ -251,10 +270,10 @@ export default function Dashboard() {
             <LogOut size={14} /> LOGOUT
           </button>
           <div style={{ display: 'flex', gap: 8, marginLeft: 8 }}>
-             <button onClick={()=>setActionTab('withdraw')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', padding: '4px 12px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+             <button type="button" onClick={() => { setModalType('withdrawal'); setModalOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', padding: '4px 12px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
                <ArrowUpToLine size={12} /> Withdraw
              </button>
-             <button onClick={()=>setActionTab('deposit')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFD700', border: 'none', color: '#000', padding: '4px 16px', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+             <button type="button" onClick={() => { setModalType('deposit'); setModalOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFD700', border: 'none', color: '#000', padding: '4px 16px', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                <ArrowDownToLine size={12} /> Deposit
              </button>
           </div>
@@ -390,7 +409,7 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {txs.map(tx => (
+                    {uiTxs.map((tx:any) => (
                       <tr key={tx.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                         <td style={{ padding: '12px 20px', color: '#787b86' }}>
                           {new Date(tx.timestamp).toLocaleDateString('en-GB')} <span style={{marginLeft: 6}}>{new Date(tx.timestamp).toLocaleTimeString('en-GB', {hour: '2-digit', minute:'2-digit'})}</span>
@@ -416,7 +435,7 @@ export default function Dashboard() {
                         </td>
                       </tr>
                     ))}
-                    {txs.length === 0 && <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#787b86' }}>No statements found.</td></tr>}
+                    {uiTxs.length === 0 && <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#787b86' }}>No statements found.</td></tr>}
                   </tbody>
                 </table>
               ) : bottomTab === 'open' ? (
@@ -482,60 +501,383 @@ export default function Dashboard() {
           <div style={{ padding: 20 }}>
             <div style={{ fontSize: 10, fontWeight: 600, color: '#787b86', letterSpacing: '0.05em', marginBottom: 8 }}>AVAILABLE BALANCE</div>
             <div style={{ fontSize: 32, fontWeight: 800, color: '#FFD700', marginBottom: 4 }}>
-              ${wal ? Number(wal.balance).toLocaleString('en-US', {minimumFractionDigits: 2}) : '0.00'}
+              ${wallet ? Number(wallet.balance).toLocaleString('en-US', {minimumFractionDigits: 2}) : '0.00'}
             </div>
             <div style={{ fontSize: 11, color: '#787b86' }}>USD - Available to trade</div>
           </div>
 
-          <div style={{ padding: '0 20px', marginTop: 10 }}>
-            <div style={{ display: 'flex', background: '#131722', borderRadius: 6, padding: 4, marginBottom: 24 }}>
-              <button 
-                onClick={()=>setActionTab('deposit')} 
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, borderRadius: 4, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', background: actionTab === 'deposit' ? '#2a2e3b' : 'transparent', color: actionTab === 'deposit' ? '#26a69a' : '#787b86', transition: 'all 0.2s' }}>
-                <ArrowDownToLine size={14} /> Deposit
-              </button>
-              <button 
-                onClick={()=>setActionTab('withdraw')} 
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, borderRadius: 4, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', background: actionTab === 'withdraw' ? '#2a2e3b' : 'transparent', color: actionTab === 'withdraw' ? '#d1d4dc' : '#787b86', transition: 'all 0.2s' }}>
-                <ArrowUpToLine size={14} /> Withdraw
-              </button>
-            </div>
+          {/* Account Info Panel — replaces old sidebar buttons */}
+          <div style={{ padding: '0 20px 20px' }}>
+            <div style={{ background: '#131722', borderRadius: 8, border: '1px solid #2a2e3b', padding: '16px' }}>
 
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#787b86', marginBottom: 6 }}>AMOUNT</div>
-              <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 12, top: 12, color: '#787b86', fontSize: 13 }}>$</span>
-                <input type="number" placeholder="0.00" value={actionAmount} onChange={e=>setActionAmount(e.target.value)} style={{ width: '100%', background: '#131722', border: '1px solid #2a2e3b', borderRadius: 4, padding: '12px 12px 12px 24px', color: '#fff', fontSize: 14, outline: 'none' }} />
+              {/* Equity */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: '#787b86' }}>Equity</span>
+                <span style={{ fontSize: 12, color: '#d1d4dc', fontFamily: 'monospace' }}>
+                  ${(wallet ? Number(wallet.balance) : 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </span>
               </div>
-            </div>
 
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#787b86', marginBottom: 6 }}>CURRENCY</div>
-              <div style={{ position: 'relative' }}>
-                <select value={actionCurrency} onChange={e=>setActionCurrency(e.target.value)} style={{ width: '100%', background: '#131722', border: '1px solid #2a2e3b', borderRadius: 4, padding: '12px', color: '#fff', fontSize: 14, outline: 'none', appearance: 'none', cursor: 'pointer' }}>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="GBP">GBP</option>
-                </select>
-                <ChevronDown size={16} color="#787b86" style={{ position: 'absolute', right: 12, top: 12, pointerEvents: 'none' }} />
+              {/* Margin Used */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: '#787b86' }}>Margin Used</span>
+                <span style={{ fontSize: 12, color: '#d1d4dc', fontFamily: 'monospace' }}>$0.00</span>
               </div>
-            </div>
 
-            <button onClick={handleActionSubmit} style={{ width: '100%', background: actionTab==='deposit' ? '#26a69a' : '#FFD700', color: actionTab==='deposit' ? '#fff' : '#000', border: 'none', borderRadius: 4, padding: '14px', fontSize: 13, fontWeight: 800, letterSpacing: '0.05em', cursor: 'pointer', transition: 'all 0.2s' }}>
-               {actionTab === 'deposit' ? 'CONFIRM DEPOSIT' : 'REQUEST WITHDRAWAL'}
-            </button>
+              {/* Free Margin */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: '#787b86' }}>Free Margin</span>
+                <span style={{ fontSize: 12, color: '#FFD700', fontFamily: 'monospace' }}>
+                  ${(wallet ? Number(wallet.balance) : 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              <div style={{ height: 1, background: '#2a2e3b', margin: '12px 0' }} />
+
+              {/* Open Positions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: '#787b86' }}>Open Positions</span>
+                <span style={{ fontSize: 12, color: '#d1d4dc' }}>{orders.filter((o: any) => o.status === 'Open').length}</span>
+              </div>
+
+              {/* Total P&L */}
+              {(() => {
+                const totalPnL = orders
+                  .filter((o: any) => o.status === 'Open')
+                  .reduce((acc: number, o: any) => {
+                    const lp = prices[o.symbol]?.price || o.entryPrice
+                    const pnl = o.type === 'Buy' ? (lp - o.entryPrice) * o.qty : (o.entryPrice - lp) * o.qty
+                    return acc + pnl
+                  }, 0)
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontSize: 11, color: '#787b86' }}>Total P&L</span>
+                    <span style={{ fontSize: 12, color: totalPnL >= 0 ? '#26a69a' : '#ef5350', fontFamily: 'monospace', fontWeight: 700 }}>
+                      {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
+                    </span>
+                  </div>
+                )
+              })()}
+
+              <div style={{ height: 1, background: '#2a2e3b', margin: '12px 0' }} />
+
+              {/* Member Since */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: '#787b86' }}>Member Since</span>
+                <span style={{ fontSize: 11, color: '#d1d4dc' }}>
+                  {user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}
+                </span>
+              </div>
+
+              {/* Account Level */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: '#787b86' }}>Account Level</span>
+                <span style={{ fontSize: 11, color: '#FFD700', fontWeight: 600 }}>Premium</span>
+              </div>
+
+            </div>
           </div>
-
           {showToast && (
             <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', background: '#2a2e3b', border: '1px solid #26a69a', color: '#fff', padding: '12px 20px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 10px 25px rgba(0,0,0,0.5)', zIndex: 10, width: '90%', fontSize: 12, fontWeight: 600, animation: 'flashUp 0.3s ease-out' }}>
               <CheckCircle2 color="#26a69a" size={16} /> 
-              {actionTab === 'deposit' ? 'Deposit request sent successfully!' : 'Withdrawal requested successfully!'}
+              {modalType === 'deposit' ? 'Deposit request sent successfully!' : 'Withdrawal requested successfully!'}
             </div>
           )}
 
         </div>
       </div>
 
+      {modalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}
+        >
+          <div style={{
+            backgroundColor: '#1a1e2e',
+            borderRadius: '12px',
+            padding: '24px',
+            width: '100%',
+            maxWidth: '420px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            border: '1px solid #2a2e3e'
+          }}>
+            
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ color: '#FFD700', fontSize: '18px', fontWeight: 700, margin: 0 }}>
+                {modalType === 'deposit' ? '+ Deposit' : '↑ Withdraw'}
+              </h2>
+              <button
+                type="button"
+                onClick={closeModal}
+                style={{ background: 'none', border: 'none', color: '#888', fontSize: '20px', cursor: 'pointer' }}
+              >✕</button>
+            </div>
+
+            {/* Balance */}
+            <div style={{ backgroundColor: '#131722', borderRadius: '8px', padding: '12px', marginBottom: '20px' }}>
+              <span style={{ color: '#888', fontSize: '12px' }}>Available Balance: </span>
+              <span style={{ color: '#FFD700', fontSize: '14px', fontWeight: 700 }}>
+                ${(wallet?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {/* Amount Input */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ color: '#888', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                Amount (USD)
+              </label>
+              <input
+                type="number"
+                placeholder="0.00"
+                value={modalAmount}
+                onChange={(e) => setModalAmount(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px 12px', backgroundColor: '#131722',
+                  border: '1px solid #2a2e3e', borderRadius: '6px',
+                  color: '#fff', fontSize: '14px', boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Payment Method */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ color: '#888', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                Payment Method
+              </label>
+              <select
+                value={modalMethod}
+                onChange={(e) => setModalMethod(e.target.value)}
+                style={{
+                  width: '100%', padding: '10px 12px', backgroundColor: '#131722',
+                  border: '1px solid #2a2e3e', borderRadius: '6px',
+                  color: '#fff', fontSize: '14px', boxSizing: 'border-box'
+                }}
+              >
+                <option value="">— Select Method —</option>
+                <option value="crypto_usdt">USDT (Tether)</option>
+                <option value="crypto_btc">Bitcoin (BTC)</option>
+                <option value="bank_transfer">Bank Transfer</option>
+              </select>
+            </div>
+
+            {/* Payment Details — show after method selected */}
+            {modalMethod && (
+              <div style={{
+                backgroundColor: '#131722', borderLeft: '3px solid #FFD700',
+                borderRadius: '6px', padding: '12px', marginBottom: '16px'
+              }}>
+                <p style={{ color: '#888', fontSize: '11px', margin: '0 0 8px' }}>
+                  Send to:
+                </p>
+
+                {modalMethod === 'crypto_usdt' && (
+                  <div>
+                    <p style={{ color: '#888', fontSize: '11px', margin: '0 0 6px' }}>
+                      USDT Wallet (TRC20)
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <code style={{ 
+                        color: '#fff', fontSize: '11px', fontFamily: 'monospace',
+                        flex: 1, wordBreak: 'break-all'
+                      }}>
+                        {companySettings?.usdt_address || 'Not configured'}
+                      </code>
+                      {companySettings?.usdt_address && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(companySettings.usdt_address)
+                            setCopiedField('usdt')
+                            setTimeout(() => setCopiedField(''), 2000)
+                          }}
+                          style={{
+                            background: '#FFD700', border: 'none', borderRadius: '4px',
+                            color: '#000', fontSize: '10px', fontWeight: 700,
+                            padding: '4px 8px', cursor: 'pointer', whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {copiedField === 'usdt' ? '✓ Copied' : 'Copy'}
+                        </button>
+                      )}
+                    </div>
+                    <p style={{ color: '#555', fontSize: '10px', marginTop: '4px' }}>
+                      Network: {companySettings?.usdt_network || 'TRC20'}
+                    </p>
+                  </div>
+                )}
+
+                {modalMethod === 'crypto_btc' && (
+                  <div>
+                    <p style={{ color: '#888', fontSize: '11px', margin: '0 0 6px' }}>
+                      Bitcoin Address
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <code style={{ 
+                        color: '#fff', fontSize: '11px', fontFamily: 'monospace',
+                        flex: 1, wordBreak: 'break-all'
+                      }}>
+                        {companySettings?.btc_address || 'Not configured'}
+                      </code>
+                      {companySettings?.btc_address && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(companySettings.btc_address)
+                            setCopiedField('btc')
+                            setTimeout(() => setCopiedField(''), 2000)
+                          }}
+                          style={{
+                            background: '#FFD700', border: 'none', borderRadius: '4px',
+                            color: '#000', fontSize: '10px', fontWeight: 700,
+                            padding: '4px 8px', cursor: 'pointer', whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {copiedField === 'btc' ? '✓ Copied' : 'Copy'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {modalMethod === 'bank_transfer' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {[
+                      { label: 'Bank Name', value: companySettings?.bank_name, key: 'bank' },
+                      { label: 'Account Holder', value: companySettings?.bank_account_holder, key: 'holder' },
+                      { label: 'RIB / IBAN', value: companySettings?.bank_rib, key: 'rib' }
+                    ].map(({ label, value, key }) => (
+                      <div key={key}>
+                        <p style={{ color: '#888', fontSize: '10px', margin: '0 0 3px' }}>{label}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ color: '#fff', fontSize: '12px', flex: 1 }}>
+                            {value || 'Not configured'}
+                          </span>
+                          {value && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(value)
+                                setCopiedField(key)
+                                setTimeout(() => setCopiedField(''), 2000)
+                              }}
+                              style={{
+                                background: '#FFD700', border: 'none', borderRadius: '4px',
+                                color: '#000', fontSize: '10px', fontWeight: 700,
+                                padding: '4px 8px', cursor: 'pointer', whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {copiedField === key ? '✓ Copied' : 'Copy'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Proof Upload — deposit only */}
+            {modalMethod && modalType === 'deposit' && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ color: '#888', fontSize: '12px', display: 'block', marginBottom: '6px' }}>
+                  Payment Proof
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={(e) => setModalFile(e.target.files?.[0] || null)}
+                  style={{ color: '#ccc', fontSize: '12px', width: '100%' }}
+                />
+                {modalFile && (
+                  <p style={{ color: '#4ade80', fontSize: '11px', marginTop: '4px' }}>
+                    ✓ {modalFile.name}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Error */}
+            {modalError && (
+              <p style={{ color: '#f87171', fontSize: '12px', marginBottom: '12px' }}>
+                {modalError}
+              </p>
+            )}
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={closeModal}
+                style={{
+                  flex: 1, padding: '10px', backgroundColor: 'transparent',
+                  border: '1px solid #444', borderRadius: '6px',
+                  color: '#888', fontSize: '13px', cursor: 'pointer'
+                }}
+              >Cancel</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setModalError('')
+                  if (!modalAmount || parseFloat(modalAmount) <= 0) {
+                    setModalError('Please enter a valid amount')
+                    return
+                  }
+                  if (!modalMethod) {
+                    setModalError('Please select a payment method')
+                    return
+                  }
+                  if (modalType === 'deposit' && !modalFile) {
+                    setModalError('Please upload payment proof')
+                    return
+                  }
+                  if (modalType === 'withdrawal' && parseFloat(modalAmount) > (wallet?.balance || 0)) {
+                    setModalError('Insufficient balance')
+                    return
+                  }
+                  setModalLoading(true)
+                  const formData = new FormData()
+                  formData.append('type', modalType)
+                  formData.append('amount', modalAmount)
+                  formData.append('currency', 'USD')
+                  formData.append('payment_method', modalMethod)
+                  if (modalFile) formData.append('proof', modalFile)
+                  const result = await submitRequest(formData)
+                  setModalLoading(false)
+                  if (result.success) {
+                    closeModal()
+                    setShowToast(true)
+                    setTimeout(() => setShowToast(false), 3000)
+                  } else {
+                    setModalError(result.error || 'Request failed')
+                  }
+                }}
+                style={{
+                  flex: 1, padding: '10px', backgroundColor: '#FFD700',
+                  border: 'none', borderRadius: '6px',
+                  color: '#000', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                  opacity: modalLoading ? 0.7 : 1
+                }}
+                disabled={modalLoading}
+              >
+                {modalLoading ? '...' : modalType === 'deposit' ? 'Confirm Deposit' : 'Confirm Withdrawal'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }
