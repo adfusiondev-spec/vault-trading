@@ -23,15 +23,14 @@ export type Tenant = {
     energy: boolean
   }
   billingCycle: 'Monthly' | 'Annual'
-  trialMode: boolean
-  trialDays: number
+  subscriptionPackage: string
   expiresAt: string
 }
 
 const INITIAL_TENANTS: Tenant[] = [
-  { id: 'T-001', company: 'Apex Trading Corp', adminEmail: 'apex_admin@thevault.io', clients: 1248, status: 'Active', isVerified: true, markets: { crypto: true, saudi: true, forex: true, energy: false }, billingCycle: 'Annual', trialMode: false, trialDays: 0, expiresAt: new Date(Date.now() + 86400000 * 365).toISOString() },
-  { id: 'T-002', company: 'Global Hedge Ltd', adminEmail: 'global_sub@thevault.io', clients: 85, status: 'Active', isVerified: true, markets: { crypto: true, saudi: false, forex: true, energy: true }, billingCycle: 'Monthly', trialMode: false, trialDays: 0, expiresAt: new Date(Date.now() + 86400000 * 30).toISOString() },
-  { id: 'T-003', company: 'Desert Alpha', adminEmail: 'desert_alpha@thevault.io', clients: 412, status: 'Suspended', isVerified: false, markets: { crypto: false, saudi: true, forex: false, energy: true }, billingCycle: 'Annual', trialMode: true, trialDays: 14, expiresAt: new Date(Date.now() - 86400000).toISOString() }
+  { id: 'T-001', company: 'Apex Trading Corp', adminEmail: 'apex_admin@thevault.io', clients: 1248, status: 'Active', isVerified: true, markets: { crypto: true, saudi: true, forex: true, energy: false }, billingCycle: 'Annual', subscriptionPackage: 'annual_vip', expiresAt: new Date(Date.now() + 86400000 * 365).toISOString() },
+  { id: 'T-002', company: 'Global Hedge Ltd', adminEmail: 'global_sub@thevault.io', clients: 85, status: 'Active', isVerified: true, markets: { crypto: true, saudi: false, forex: true, energy: true }, billingCycle: 'Monthly', subscriptionPackage: 'monthly_standard', expiresAt: new Date(Date.now() + 86400000 * 30).toISOString() },
+  { id: 'T-003', company: 'Desert Alpha', adminEmail: 'desert_alpha@thevault.io', clients: 412, status: 'Suspended', isVerified: false, markets: { crypto: false, saudi: true, forex: false, energy: true }, billingCycle: 'Annual', subscriptionPackage: 'trial', expiresAt: new Date(Date.now() - 86400000).toISOString() }
 ]
 
 export default function SuperAdminDashboard() {
@@ -58,8 +57,7 @@ export default function SuperAdminDashboard() {
     adminPassword: '',
     markets: { crypto: false, saudi: false, forex: false, energy: false },
     billingCycle: 'Monthly' as 'Monthly' | 'Annual',
-    trialMode: false,
-    trialDays: 14,
+    subscriptionPackage: 'trial',
     expiresAt: ''
   })
 
@@ -75,7 +73,7 @@ export default function SuperAdminDashboard() {
           return
         }
 
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+        const { data: profile } = await supabase.from('profiles').select('role, company_slug').eq('id', session.user.id).single()
 
         // Master Override
         if (session.user.email === 'admin@thevault.io') {
@@ -86,7 +84,10 @@ export default function SuperAdminDashboard() {
 
         if (!profile || profile.role !== 'super_admin') {
           if (profile?.role === 'trader' || profile?.role === 'user') router.push('/user')
-          else if (profile?.role === 'sub_admin') router.push('/sub-admin')
+          else if (profile?.role === 'sub_admin') {
+            const slug = (profile as any).company_slug || 'platform'
+            router.push(`/sub-admin/${slug}`)
+          }
           else router.push('/login')
           return
         }
@@ -241,8 +242,7 @@ export default function SuperAdminDashboard() {
       adminPassword: '',
       markets: { crypto: false, saudi: false, forex: false, energy: false },
       billingCycle: 'Monthly',
-      trialMode: false,
-      trialDays: 14,
+      subscriptionPackage: 'trial',
       expiresAt: ''
     })
     setIsModalOpen(true)
@@ -258,8 +258,7 @@ export default function SuperAdminDashboard() {
       adminPassword: t.adminPassword || '',
       markets: { ...t.markets },
       billingCycle: t.billingCycle,
-      trialMode: t.trialMode,
-      trialDays: t.trialDays,
+      subscriptionPackage: t.subscriptionPackage || 'trial',
       expiresAt: t.expiresAt
     })
     setIsModalOpen(true)
@@ -283,8 +282,7 @@ export default function SuperAdminDashboard() {
         adminPassword: formData.adminPassword,
         markets: formData.markets,
         billingCycle: formData.billingCycle,
-        trialMode: formData.trialMode,
-        trialDays: formData.trialDays,
+        subscriptionPackage: formData.subscriptionPackage,
         expiresAt: computeExpires,
         status: new Date(computeExpires) > new Date() ? 'Active' : 'Suspended'
       } : t))
@@ -319,20 +317,25 @@ export default function SuperAdminDashboard() {
         isVerified: true,
         markets: formData.markets,
         billingCycle: formData.billingCycle,
-        trialMode: formData.trialMode,
-        trialDays: formData.trialDays,
+        subscriptionPackage: formData.subscriptionPackage,
         expiresAt: computeExpires
       }
       setTenants([newTenant, ...tenants])
     }
+
+    const adminClient = createClient()
+    await adminClient.from('profiles')
+      .update({ subscription_package: formData.subscriptionPackage })
+      .eq('id', editingTenant || formData.id)
+
     setIsModalOpen(false)
   }
 
-  const handleImpersonate = (tenantId: string) => {
-    if (confirm(`Do you want to securely enter the Sub-Admin Dashboard for ${formData.company}?`)) {
+  const handleImpersonate = (tenantId: string, slug: string) => {
+    if (confirm(`Do you want to securely enter the Sub-Admin Dashboard for this tenant?`)) {
       localStorage.setItem('vault_user_role', 'sub_admin')
       localStorage.setItem('vault_impersonated_tenant_id', tenantId)
-      router.push('/sub-admin')
+      router.push(`/sub-admin/${slug}`)
     }
   }
 
@@ -371,7 +374,7 @@ export default function SuperAdminDashboard() {
             <Crown size={20} strokeWidth={2.5} color="#000" />
           </div>
           <div>
-            <h1 style={{ fontWeight: 800, fontSize: 16, letterSpacing: '0.1em', margin: 0 }}>THE VAULT</h1>
+            <h1 style={{ fontWeight: 800, fontSize: 16, letterSpacing: '0.1em', margin: 0 }}>PLATFORM CRM SYSTEM</h1>
             <span style={{ color: 'var(--gold, #FFD700)', fontSize: 10, letterSpacing: '0.05em', fontWeight: 600 }}>MASTER CONTROL · SAAS ADMIN</span>
           </div>
         </div>
@@ -616,7 +619,11 @@ export default function SuperAdminDashboard() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>COMPANY NAME</label>
-                  <input value={formData.company} onChange={e => setFormData({...formData, company: e.target.value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-')})} placeholder="e.g. Nexus Corp" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none' }} />
+                  <input value={formData.company} onChange={e => {
+                    const name = e.target.value
+                    const slug = name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim()
+                    setFormData({...formData, company: name, slug})
+                  }} placeholder="e.g. Nexus Corp" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>COMPANY SLUG (URL)</label>
@@ -666,20 +673,25 @@ export default function SuperAdminDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: '#8a8e9b', cursor: 'pointer', marginBottom: 6 }}>
-                    <input type="checkbox" checked={formData.trialMode} onChange={e => setFormData({...formData, trialMode: e.target.checked})} />
-                    ENABLE TRIAL MODE
-                  </label>
-                  {formData.trialMode && (
-                    <input type="number" placeholder="Trial Days" value={formData.trialDays} onChange={e => setFormData({...formData, trialDays: parseInt(e.target.value) || 0})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#FFD700', padding: '10px 14px', borderRadius: 6, outline: 'none' }} />
-                  )}
+                  <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>SUBSCRIPTION PACKAGE</label>
+                  <select 
+                    value={formData.subscriptionPackage}
+                    onChange={(e) => setFormData({...formData, subscriptionPackage: e.target.value})}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="trial" style={{ color: '#000' }}>TRIAL (14 days)</option>
+                    <option value="monthly_standard" style={{ color: '#000' }}>Monthly Standard</option>
+                    <option value="annual_standard" style={{ color: '#000' }}>Annual Standard</option>
+                    <option value="monthly_vip" style={{ color: '#000' }}>Monthly VIP</option>
+                    <option value="annual_vip" style={{ color: '#000' }}>Annual VIP</option>
+                  </select>
                 </div>
               </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 30, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
               {editingTenant ? (
-                <button onClick={() => handleImpersonate(formData.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'rgba(38,166,154,0.1)', border: '1px solid #26a69a', color: '#26a69a', borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.2s' }}>
+                <button onClick={() => handleImpersonate(formData.id, formData.slug)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'rgba(38,166,154,0.1)', border: '1px solid #26a69a', color: '#26a69a', borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.2s' }}>
                   <Play size={14} /> ENTER SUB-ADMIN DASHBOARD
                 </button>
               ) : <div/>}

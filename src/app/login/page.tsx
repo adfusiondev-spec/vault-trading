@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { ShieldCheck, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const companySlug = searchParams.get('company')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
@@ -38,7 +41,7 @@ export default function LoginPage() {
     // Fetch user profile to get their role
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, company_slug')
       .eq('id', authData.user.id)
       .single()
 
@@ -51,7 +54,7 @@ export default function LoginPage() {
     if (profile?.role === 'super_admin') {
       router.push('/admin')
     } else if (profile?.role === 'sub_admin') {
-      router.push('/sub-admin')
+      router.push(`/sub-admin/${profile.company_slug || 'platform'}`)
     } else {
       router.push('/user')
     }
@@ -174,11 +177,13 @@ export default function LoginPage() {
         </form>
 
         {/* ── Footer ── */}
-        <div style={{ marginTop: 30, textAlign: 'center' }}>
-          <p style={{ color: '#8a8e9b', fontSize: 12 }}>
-            Don't have an account? <a href="#" style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 600, marginLeft: 4 }}>Request Access</a>
-          </p>
-        </div>
+        {companySlug && (
+          <div style={{ marginTop: 30, textAlign: 'center' }}>
+            <p style={{ color: '#8a8e9b', fontSize: 12 }}>
+              Don't have an account? <Link href={`/register?company=${companySlug}`} style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 600, marginLeft: 4 }}>Request Access</Link>
+            </p>
+          </div>
+        )}
         
       </div>
 
@@ -195,5 +200,13 @@ export default function LoginPage() {
         }
       `}} />
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{height: '100vh', width: '100vw', background: '#0b0e11'}} />}>
+      <LoginForm />
+    </Suspense>
   )
 }

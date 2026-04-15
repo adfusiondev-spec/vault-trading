@@ -20,9 +20,9 @@ type Order = {
   timestamp: number
 }
 
-export default function ClientDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ClientDetailsPage({ params }: { params: Promise<{ slug: string, id: string }> }) {
   const router = useRouter()
-  const { id } = React.use(params)
+  const { id, slug } = React.use(params)
   const [mounted, setMounted] = useState(false)
   
   // Auth State
@@ -54,6 +54,62 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
   const { prices } = useMarketData()
   const livePrice = prices[asset]?.price || 0
 
+  const clientId = decodeURIComponent(id)
+
+  const loadClientData = React.useCallback(async () => {
+    const supabase = createClient()
+    const { data: wallet } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', clientId)
+      .single()
+    
+    setBalance(wallet?.balance ? parseFloat(wallet.balance) : 0)
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, email, phone_number, country, notes, is_banned, plain_password')
+      .eq('id', clientId)
+      .maybeSingle()
+    
+    if (profile) {
+      setClientName(profile.full_name || profile.email || 'Loading...')
+      setClientEmail(profile.email || '')
+      setEditForm({
+        full_name: profile.full_name || '',
+        phone_number: profile.phone_number || '',
+        country: profile.country || ''
+      })
+      setIsBanned(!!profile.is_banned)
+      setCurrentPassword(profile.plain_password || '')
+      if (profile.notes) setNotes(profile.notes)
+      setClientUUID(clientId)
+    }
+
+    // Sync Trades
+    const { data: oData } = await supabase.from('trades').select('*').eq('user_id', clientId).order('created_at', { ascending: false })
+    if (oData) {
+      const formattedTrades = oData.map((o: any) => {
+        const entryPrice = parseFloat(o.entry_price || '0')
+        const amount = parseFloat(o.amount || '0')
+        return {
+          id: o.id,
+          symbol: o.symbol,
+          asset: o.symbol,
+          label: o.symbol,
+          type: o.type === 'buy' ? 'Buy' : 'Sell',
+          amountUSD: amount,
+          qty: entryPrice > 0 ? amount / entryPrice : 0,
+          entryPrice: entryPrice,
+          timestamp: new Date(o.created_at).getTime(),
+          status: o.status === 'open' ? 'Open' : (o.status === 'closed' ? 'Completed' : 'Cancelled'),
+          pnl: parseFloat(o.profit_loss || '0'),
+        }
+      })
+      setOrders(formattedTrades.filter((t: any) => t.status === 'Open'))
+    }
+  }, [clientId])
+
   useEffect(() => {
     setMounted(true)
     const supabase = createClient()
@@ -84,86 +140,35 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
     }
     checkAuth()
 
-    let userId: string | null = null;
+    loadClientData()
 
-    const syncData = async () => {
-      try {
-        let currentUserId = userId
-        let decId = decodeURIComponent(id as string)
-
-        // 1. Resolve user ID from URL (UUID or Email)
-        if (!currentUserId) {
-          if (decId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-            currentUserId = decId
-          } else {
-            // Fallback to email search (legacy support or direct email links)
-            const { data: pByEmail } = await supabase.from('profiles').select('id').eq('email', decId).single()
-            if (pByEmail) currentUserId = pByEmail.id
-          }
-        }
-
-        if (currentUserId) {
-          setClientUUID(currentUserId)
-          // 2. Fetch Core Profile Data
-          const { data: pData } = await supabase
-            .from('profiles')
-            .select('full_name, email, phone_number, country, notes, is_banned, plain_password')
-            .eq('id', currentUserId)
-            .maybeSingle()
-          
-          if (pData) {
-            setClientName(pData.full_name || pData.email)
-            setClientEmail(pData.email || '')
-            setEditForm({
-              full_name: pData.full_name || '',
-              phone_number: pData.phone_number || '',
-              country: pData.country || ''
-            })
-            setIsBanned(!!pData.is_banned)
-            setCurrentPassword(pData.plain_password || '')
-            if (pData.notes) setNotes(pData.notes)
-          }
-
-          // 3. Sync Balance (Wallet)
-          const { data: wData } = await supabase.from('wallets').select('balance').eq('user_id', currentUserId).eq('currency', 'USD').maybeSingle()
-          if (wData) setBalance(parseFloat(wData.balance))
-
-          // 4. Sync Trades
-          const { data: oData } = await supabase.from('trades').select('*').eq('user_id', currentUserId).order('created_at', { ascending: false })
-          if (oData) {
-            const formattedTrades = oData.map((o: any) => {
-              const entryPrice = parseFloat(o.entry_price || '0')
-              const amount = parseFloat(o.amount || '0')
-              return {
-                id: o.id,
-                symbol: o.symbol,
-                asset: o.symbol,
-                label: o.symbol,
-                type: o.type === 'buy' ? 'Buy' : 'Sell',
-                amountUSD: amount,
-                qty: entryPrice > 0 ? amount / entryPrice : 0,
-                entryPrice: entryPrice,
-                timestamp: new Date(o.created_at).getTime(),
-                status: o.status === 'open' ? 'Open' : (o.status === 'closed' ? 'Completed' : 'Cancelled'),
-                pnl: parseFloat(o.profit_loss || '0'),
-              }
-            })
-            setOrders(formattedTrades.filter((t: any) => t.status === 'Open'))
-          }
-        }
-      } catch (e) {
-        console.error('Sync failed', e)
-      }
-    }
-    
-    syncData()
-    const channel = supabase.channel('sub-admin-client')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, syncData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'wallets' }, syncData)
+    const tradesChannel = supabase.channel('trades-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'trades',
+        filter: `user_id=eq.${clientId}`
+      }, () => {
+        loadClientData()
+      })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [router, id])
+    const walletChannel = supabase.channel('wallet-sync-admin')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'wallets',
+        filter: `user_id=eq.${clientId}`
+      }, () => {
+        loadClientData()
+      })
+      .subscribe()
+
+    return () => { 
+        supabase.removeChannel(tradesChannel)
+        supabase.removeChannel(walletChannel) 
+    }
+  }, [router, clientId, loadClientData])
 
   if (!mounted || loading) {
     return (
@@ -184,13 +189,11 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
     const amountNum = parseFloat(tradeAmount)
     if (!amountNum || amountNum <= 0) return alert('Enter a valid amount')
     
-    setTradeAmount('')
     const supabase = createClient()
-    if (!clientUUID) return alert('User ID not resolved.')
-    const uid = clientUUID
+    if (!clientId) return alert('User ID not resolved.')
 
     const { data: rpcData, error: rpcError } = await supabase.rpc('execute_trade', {
-      p_user_id: uid,
+      p_user_id: clientId,
       p_symbol: asset,
       p_amount: amountNum,
       p_type: type.toLowerCase(),
@@ -203,7 +206,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
       alert(`Trade rejected: ${rpcData.message}`)
     } else {
       setTradeAmount('')
-      syncData() // Refresh data immediately
+      loadClientData() // Refresh data immediately
     }
   }
 
@@ -289,7 +292,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
         padding: '0 24px', background: 'rgba(11,14,17,0.95)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <button onClick={() => router.push('/sub-admin')} style={{
+          <button onClick={() => router.push(`/sub-admin/${slug}`)} style={{
             display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.05)',
             border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 16px',
             borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s'

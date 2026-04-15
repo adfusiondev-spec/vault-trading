@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   Bell, User, Wifi, LogOut, ArrowDownToLine, ArrowUpToLine,
   Search, BarChart2, Briefcase, ChevronDown, CheckCircle2,
-  AlertCircle, ChevronRight, Activity, Percent
+  AlertCircle, ChevronRight, Activity, Percent, X
 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -153,6 +153,58 @@ export default function Dashboard() {
   })
   const [copiedField, setCopiedField] = useState('')
 
+  const [withdrawAddress, setWithdrawAddress] = useState('')
+  const [bankName, setBankName] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [accountHolder, setAccountHolder] = useState('')
+
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false)
+  const [profileName, setProfileName] = useState('')
+  const [profilePhone, setProfilePhone] = useState('')
+  const [profileCountry, setProfileCountry] = useState('')
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+
+  const openProfilePanel = () => {
+    setProfileName(user?.user_metadata?.full_name || user?.full_name || '')
+    setProfilePhone(user?.phone_number || '')
+    setProfileCountry(user?.country || '')
+    setCurrentPw('')
+    setNewPw('')
+    setConfirmPw('')
+    setProfilePanelOpen(true)
+  }
+
+  const handleSaveProfile = async () => {
+    if (!user) return
+    const { error: err1 } = await supabase.auth.updateUser({ 
+      data: { full_name: profileName, phone: profilePhone, country: profileCountry } 
+    })
+    const { error: err2 } = await supabase.from('profiles')
+      .update({ full_name: profileName, phone_number: profilePhone, country: profileCountry })
+      .eq('id', user.id)
+    if (err1 || err2) alert(err1?.message || err2?.message)
+    else {
+      alert('Profile updated successfully')
+      setProfilePanelOpen(false)
+      const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      if (p) setUser(p)
+    }
+  }
+
+  const handleSavePassword = async () => {
+    if (newPw !== confirmPw) return alert('Passwords do not match')
+    if (newPw.length < 6) return alert('Password must be at least 6 characters')
+    const { error } = await supabase.auth.updateUser({ password: newPw })
+    if (error) alert(error.message)
+    else {
+      alert('Password updated successfully')
+      setCurrentPw(''); setNewPw(''); setConfirmPw('')
+    }
+  }
+
+
   const closeModal = () => {
     setModalOpen(false)
     setModalAmount('')
@@ -160,6 +212,10 @@ export default function Dashboard() {
     setModalFile(null)
     setModalError('')
     setModalLoading(false)
+    setWithdrawAddress('')
+    setBankName('')
+    setAccountNumber('')
+    setAccountHolder('')
   }
 
   const { prices, connected } = useMarketData()
@@ -169,7 +225,9 @@ export default function Dashboard() {
   const refresh = useCallback(async (uid: string) => {
     if (!uid) return
     const { data: o } = await supabase.from('trades').select('*').eq('user_id', uid).order('created_at', { ascending: false })
-    if (o) setOrders(o.map((x:any)=>({ id: x.id, type: x.type==='buy'?'Buy':'Sell', symbol: x.symbol, label: x.symbol, amountUSD: Number(x.amount), qty: Number(x.quantity), entryPrice: Number(x.entry_price), status: x.status==='open'?'Open':'Completed' })))
+    if (o) setOrders(o.map((x:any)=>({ id: x.id, type: x.type==='buy'?'Buy':'Sell', symbol: x.symbol, label: x.symbol, amountUSD: Number(x.amount), qty: Number(x.quantity), entryPrice: Number(x.entry_price), status: x.status==='open'?'Open':'Completed', created_at: x.created_at })))
+    const { data: w } = await supabase.from('wallets').select('*').eq('user_id', uid).single()
+    if (w) setWal(w)
   }, [supabase])
 
   const { submitRequest, wallet, transactions } = useTransactions(user?.id)
@@ -229,10 +287,26 @@ export default function Dashboard() {
     const { error } = await supabase.rpc('execute_trade', { p_user_id: user.id, p_symbol: symbol, p_amount: parseFloat(tradeAmt), p_type: type, p_entry_price: liveP })
     if (error) alert(error.message)
     else {
-      refresh(user.id)
+      await refresh(user.id)
       setTradeAmt('')
     }
   }
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase.channel('wallet-sync')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'wallets',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        refresh(user.id)
+      })
+      .subscribe()
+    
+    return () => { supabase.removeChannel(channel) }
+  }, [user?.id, supabase, refresh])
 
   const liveCurrent = prices[symbol]?.price || 0
   const baseChartPrice = useMemo(() => {
@@ -260,9 +334,9 @@ export default function Dashboard() {
           </div>
           <Bell size={16} color="#787b86" style={{ cursor: 'pointer' }} />
           <div style={{ width: 1, height: 24, background: '#2a2e3b' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <div onClick={openProfilePanel} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <div style={{ background: '#2a2e3b', color: '#FFD700', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>G</div>
-            <span style={{ fontSize: 12, color: '#d1d4dc' }}>{user?.full_name || 'Guest Trader'}</span>
+            <span style={{ fontSize: 12, color: '#d1d4dc', whiteSpace: 'nowrap' }}>{user?.user_metadata?.full_name || user?.full_name || user?.email?.split('@')[0] || 'Trader'}</span>
             <User size={14} color="#787b86" />
           </div>
           <div style={{ width: 1, height: 24, background: '#2a2e3b' }} />
@@ -380,8 +454,8 @@ export default function Dashboard() {
                 { id: 'open', label: `Open Positions (${orders.filter(o=>o.status==='Open').length})` },
                 { id: 'pending', label: 'Pending Orders (0)' },
                 { id: 'closed', label: 'Closed Positions (0)' },
-                { id: 'statements', label: `Statements (${txs.length})` },
-                { id: 'summary', label: 'Account Summary (0)' }
+                { id: 'statements', label: `Statements (${uiTxs.length})` },
+                { id: 'summary', label: `Account Summary (${uiTxs.filter((t:any) => t.status === 'Approved').length})` }
               ].map(t => (
                 <button 
                   key={t.id} onClick={()=>setBottomTab(t.id)} 
@@ -441,7 +515,7 @@ export default function Dashboard() {
               ) : bottomTab === 'open' ? (
                 <table style={{ width: '100%', fontSize: 11, textAlign: 'left', borderCollapse: 'collapse' }}>
                   <thead style={{ color: '#787b86', borderBottom: '1px solid #1e222d' }}>
-                    <tr><th style={{ padding: '12px 20px' }}>ASSET</th><th>TYPE</th><th>SIZE (USD)</th><th>ENTRY</th><th>PNL</th><th style={{textAlign: 'right', paddingRight:20}}>ACTION</th></tr>
+                    <tr><th style={{ padding: '12px 20px' }}>ASSET</th><th>DATE</th><th>TYPE</th><th>SIZE (USD)</th><th>ENTRY</th><th>PNL</th><th style={{textAlign: 'right', paddingRight:20}}>ACTION</th></tr>
                   </thead>
                   <tbody>
                     {orders.filter(o=>o.status==='Open').map(o => {
@@ -450,6 +524,11 @@ export default function Dashboard() {
                       return (
                         <tr key={o.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
                           <td style={{ padding: '12px 20px', color: '#fff', fontWeight: 600 }}>{o.label}</td>
+                          <td style={{ color: '#787b86', fontSize: 10 }}>
+                            {new Date(o.created_at || Date.now()).toLocaleDateString('en-GB', {
+                              day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                            })}
+                          </td>
                           <td style={{ color: o.type==='Buy' ? '#26a69a' : '#ef5350' }}>{o.type.toUpperCase()}</td>
                           <td style={{ color: '#fff' }}>${o.amountUSD.toFixed(2)}</td>
                           <td style={{ color: '#787b86' }}>{fmtPrice(o.entryPrice)}</td>
@@ -477,7 +556,7 @@ export default function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
               <div style={{ background: '#FFD700', color: '#000', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800 }}>G</div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{user?.full_name || 'Guest Trader'}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{user?.user_metadata?.full_name || user?.full_name || user?.email?.split('@')[0] || 'Trader'}</div>
                 <div style={{ fontSize: 11, color: '#787b86' }}>{user?.email || 'trader@institution.io'}</div>
               </div>
             </div>
@@ -501,7 +580,7 @@ export default function Dashboard() {
           <div style={{ padding: 20 }}>
             <div style={{ fontSize: 10, fontWeight: 600, color: '#787b86', letterSpacing: '0.05em', marginBottom: 8 }}>AVAILABLE BALANCE</div>
             <div style={{ fontSize: 32, fontWeight: 800, color: '#FFD700', marginBottom: 4 }}>
-              ${wallet ? Number(wallet.balance).toLocaleString('en-US', {minimumFractionDigits: 2}) : '0.00'}
+              ${(wal || wallet) ? Number((wal || wallet).balance).toLocaleString('en-US', {minimumFractionDigits: 2}) : '0.00'}
             </div>
             <div style={{ fontSize: 11, color: '#787b86' }}>USD - Available to trade</div>
           </div>
@@ -514,7 +593,7 @@ export default function Dashboard() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 11, color: '#787b86' }}>Equity</span>
                 <span style={{ fontSize: 12, color: '#d1d4dc', fontFamily: 'monospace' }}>
-                  ${(wallet ? Number(wallet.balance) : 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ${((wal || wallet) ? Number((wal || wallet).balance) : 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
 
@@ -528,7 +607,7 @@ export default function Dashboard() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <span style={{ fontSize: 11, color: '#787b86' }}>Free Margin</span>
                 <span style={{ fontSize: 12, color: '#FFD700', fontFamily: 'monospace' }}>
-                  ${(wallet ? Number(wallet.balance) : 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  ${((wal || wallet) ? Number((wal || wallet).balance) : 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </span>
               </div>
 
@@ -672,7 +751,7 @@ export default function Dashboard() {
             </div>
 
             {/* Payment Details — show after method selected */}
-            {modalMethod && (
+            {modalMethod && modalType === 'deposit' && (
               <div style={{
                 backgroundColor: '#131722', borderLeft: '3px solid #FFD700',
                 borderRadius: '6px', padding: '12px', marginBottom: '16px'
@@ -788,6 +867,54 @@ export default function Dashboard() {
               </div>
             )}
 
+            {modalMethod && modalType === 'withdrawal' && (
+              <div style={{
+                backgroundColor: '#131722', borderLeft: '3px solid #FFD700',
+                borderRadius: '6px', padding: '12px', marginBottom: '16px'
+              }}>
+                {modalMethod === 'crypto_usdt' || modalMethod === 'crypto_btc' ? (
+                  <div>
+                    <label style={{ color: '#888', fontSize: '11px', display: 'block', marginBottom: '6px' }}>Your Wallet Address</label>
+                    <input 
+                      type="text"
+                      placeholder={modalMethod === 'crypto_usdt' ? 'USDT TRC20 Address' : 'Bitcoin Address'}
+                      value={withdrawAddress}
+                      onChange={(e) => setWithdrawAddress(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', backgroundColor: 'rgba(0,0,0,0.4)',
+                        border: '1px solid rgba(255,215,0,0.3)', borderRadius: '6px',
+                        color: '#fff', fontSize: '13px', boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                ) : modalMethod === 'bank_transfer' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <input placeholder="Bank Name" 
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          style={{
+                            width: '100%', padding: '10px 12px', backgroundColor: 'rgba(0,0,0,0.4)',
+                            border: '1px solid rgba(255,215,0,0.3)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box'
+                          }} />
+                    <input placeholder="RIB / IBAN" 
+                          value={accountNumber}
+                          onChange={(e) => setAccountNumber(e.target.value)}
+                          style={{
+                            width: '100%', padding: '10px 12px', backgroundColor: 'rgba(0,0,0,0.4)',
+                            border: '1px solid rgba(255,215,0,0.3)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box'
+                          }} />
+                    <input placeholder="Account Holder Name" 
+                          value={accountHolder}
+                          onChange={(e) => setAccountHolder(e.target.value)}
+                          style={{
+                            width: '100%', padding: '10px 12px', backgroundColor: 'rgba(0,0,0,0.4)',
+                            border: '1px solid rgba(255,215,0,0.3)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box'
+                          }} />
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             {/* Proof Upload — deposit only */}
             {modalMethod && modalType === 'deposit' && (
               <div style={{ marginBottom: '16px' }}>
@@ -842,6 +969,10 @@ export default function Dashboard() {
                     setModalError('Please upload payment proof')
                     return
                   }
+                  if (modalType === 'withdrawal' && !withdrawAddress && !accountNumber) {
+                    setModalError('Please enter your withdrawal details')
+                    return
+                  }
                   if (modalType === 'withdrawal' && parseFloat(modalAmount) > (wallet?.balance || 0)) {
                     setModalError('Insufficient balance')
                     return
@@ -853,6 +984,12 @@ export default function Dashboard() {
                   formData.append('currency', 'USD')
                   formData.append('payment_method', modalMethod)
                   if (modalFile) formData.append('proof', modalFile)
+                  
+                  if (modalType === 'withdrawal') {
+                    formData.append('destination_address', withdrawAddress || accountNumber)
+                    if (bankName) formData.append('bank_name', bankName)
+                  }
+
                   const result = await submitRequest(formData)
                   setModalLoading(false)
                   if (result.success) {
@@ -878,6 +1015,72 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ── PROFILE PANEL ── */}
+      {profilePanelOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', justifyContent: 'flex-end', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ width: 400, maxWidth: '100%', background: '#131722', borderLeft: '1px solid #2a2e3b', display: 'flex', flexDirection: 'column', height: '100%', animation: 'slideInRight 0.3s ease-out' }}>
+            <div style={{ padding: 20, borderBottom: '1px solid #2a2e3b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ color: '#fff', fontSize: 16, margin: 0, letterSpacing: '0.05em' }}>PROFILE SETTINGS</h3>
+              <button onClick={() => setProfilePanelOpen(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <div style={{ padding: 24, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              
+              <div>
+                <label style={{ display: 'block', color: '#888', fontSize: 11, marginBottom: 8, letterSpacing: '0.05em' }}>Email Address</label>
+                <input type="text" value={user?.email || ''} readOnly style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid #2a2e3b', borderRadius: 6, color: '#666', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', color: '#888', fontSize: 11, marginBottom: 8, letterSpacing: '0.05em' }}>Full Name</label>
+                <input type="text" value={profileName} onChange={e => setProfileName(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', color: '#888', fontSize: 11, marginBottom: 8, letterSpacing: '0.05em' }}>Phone Number</label>
+                <input type="text" value={profilePhone} onChange={e => setProfilePhone(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', color: '#888', fontSize: 11, marginBottom: 8, letterSpacing: '0.05em' }}>Country</label>
+                <input type="text" value={profileCountry} onChange={e => setProfileCountry(e.target.value)} style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+
+              <hr style={{ borderColor: '#2a2e3b', width: '100%', margin: '10px 0', borderStyle: 'solid' }} />
+
+              <h4 style={{ color: '#FFD700', fontSize: 13, margin: '0 0 -10px', letterSpacing: '0.05em', fontWeight: 600 }}>CHANGE PASSWORD</h4>
+              <div>
+                <label style={{ display: 'block', color: '#888', fontSize: 11, marginBottom: 8, letterSpacing: '0.05em' }}>Current Password</label>
+                <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} placeholder="••••••••" style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#888', fontSize: 11, marginBottom: 8, letterSpacing: '0.05em' }}>New Password</label>
+                <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Min 6 characters" style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#888', fontSize: 11, marginBottom: 8, letterSpacing: '0.05em' }}>Confirm Password</label>
+                <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="Re-type new password" style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              </div>
+              <button 
+                onClick={handleSavePassword}
+                style={{ padding: '10px', background: 'transparent', border: '1px solid #FFD700', borderRadius: 6, color: '#FFD700', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: -4 }}
+              >
+                Save Password
+              </button>
+
+            </div>
+            <div style={{ padding: 20, borderTop: '1px solid #2a2e3b' }}>
+              <button 
+                onClick={handleSaveProfile}
+                style={{ width: '100%', padding: '12px', background: '#FFD700', border: 'none', borderRadius: 6, color: '#000', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em' }}
+              >
+                SAVE PROFILE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <style dangerouslySetInnerHTML={{__html: `@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }`}} />
     </div>
   )
 }
