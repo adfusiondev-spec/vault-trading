@@ -1,41 +1,51 @@
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/utils/supabase/client'
 
-export function useNotifications(userId: string) {
+export const useNotifications = (userId: string, userRole: string) => {
   const [notifications, setNotifications] = useState<any[]>([])
-  const supabase = createClient()
+  const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
     if (!userId) return
+    const supabase = createClient()
 
-    // Fetch existing
-    supabase.from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_read', false)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setNotifications(data ?? []))
+    const fetchNotifications = async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      setNotifications(data || [])
+      setUnreadCount(data?.filter(n => !n.read).length || 0)
+    }
 
-    // Subscribe to new
-    const channel = supabase
-      .channel('notifications')
+    fetchNotifications()
+
+    const channel = supabase.channel('notifications')
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${userId}`
-      }, (payload) => {
-        setNotifications(prev => [payload.new, ...prev])
-      })
+      }, () => fetchNotifications())
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
   }, [userId])
 
-  const markRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
-    setNotifications(prev => prev.filter(n => n.id !== id))
+  const markAsRead = async (notificationId: string) => {
+    const supabase = createClient()
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notificationId)
+      
+    // Update local state without refetching
+    setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n))
+    setUnreadCount(prev => Math.max(0, prev - 1))
   }
 
-  return { notifications, markRead, count: notifications.length }
+  return { notifications, unreadCount, markAsRead }
 }

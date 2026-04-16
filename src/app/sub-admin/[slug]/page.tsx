@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, Activity, DollarSign, LogOut, ShieldCheck, AlertCircle, Check, X, Bell, Eye, Settings } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
-import PaymentSettingsPanel from '@/components/sub-admin/PaymentSettingsPanel'
 import { usePendingTransactions } from '@/hooks/usePendingTransactions'
 import { useMarketData } from '@/hooks/useMarketData'
+
+import { useNotifications } from '@/hooks/useNotifications'
 
 // Mock Data
 const INITIAL_TRADES: any[] = []
@@ -48,6 +49,15 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   })
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set())
+
+  // Notifications
+  const [showNotifications, setShowNotifications] = useState(false)
+
+  // Subscription Payment Modal
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const [paymentLoading, setPaymentLoading] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -210,7 +220,9 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [router])
+  }, [router, slug])
+
+  const { notifications, unreadCount, markAsRead } = useNotifications(companyProfile?.id || '', 'sub_admin')
 
   const handleLogout = () => {
     localStorage.removeItem('vault_user_email')
@@ -224,6 +236,27 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     supabase.auth.signOut().catch(() => {})
     
     window.location.href = '/login'
+  }
+
+  const handleSubscriptionPayment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!paymentAmount || !paymentMethod) return alert('Please enter amount and method')
+    if (!companyProfile?.id) return alert('Error identifying company profile')
+    
+    setPaymentLoading(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('subscription_payments').insert([
+      { sub_admin_id: companyProfile.id, amount: parseFloat(paymentAmount), method: paymentMethod, status: 'Pending', reference: `SUB-${Date.now()}` }
+    ])
+    setPaymentLoading(false)
+    if (error) {
+      alert('Error submitting payment: ' + error.message)
+    } else {
+      alert('Subscription payment submitted successfully!')
+      setIsPaymentModalOpen(false)
+      setPaymentAmount('')
+      setPaymentMethod('')
+    }
   }
 
   // Actions
@@ -357,6 +390,38 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#26a69a' }} />
             <span style={{ fontSize: 12, letterSpacing: '0.05em' }}>SYSTEM ONLINE</span>
           </div>
+
+          <div style={{ position: 'relative' }}>
+            <div onClick={() => setShowNotifications(!showNotifications)} style={{ position: 'relative', cursor: 'pointer' }}>
+              <Bell size={16} color="#787b86" />
+              {unreadCount > 0 && <div style={{ position: 'absolute', top: -4, right: -4, background: '#ef5350', color: '#fff', fontSize: 9, fontWeight: 700, width: 14, height: 14, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
+            </div>
+            {showNotifications && (
+              <div style={{ position: 'absolute', top: 30, right: -120, width: 300, background: '#1a1e2e', border: '1px solid #2a2e3b', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid #2a2e3b', fontSize: 13, fontWeight: 700, color: '#fff' }}>Notifications</div>
+                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: 'center', color: '#787b86', fontSize: 12 }}>No notifications yet.</div>
+                  ) : notifications.map((n:any) => (
+                    <div key={n.id} onClick={() => !n.read && markAsRead(n.id)} style={{ padding: 12, borderBottom: '1px solid #2a2e3b', cursor: 'pointer', background: n.read ? 'transparent' : 'rgba(38,166,154,0.05)' }}>
+                      <div style={{ fontSize: 12, color: n.read ? '#d1d4dc' : '#fff', fontWeight: n.read ? 400 : 600 }}>{n.title || 'Notification'}</div>
+                      <div style={{ fontSize: 11, color: '#787b86', marginTop: 4 }}>{n.message}</div>
+                      <div style={{ fontSize: 10, color: '#787b86', marginTop: 6 }}>{new Date(n.created_at).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button onClick={() => setIsPaymentModalOpen(true)} style={{
+            display: 'flex', alignItems: 'center', gap: 6, background: '#FFD700',
+            border: 'none', color: '#000', padding: '6px 16px',
+            borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all 0.2s'
+          }}>
+            <DollarSign size={14} /> PAY SUBSCRIPTION
+          </button>
+
           <button onClick={handleLogout} style={{
             display: 'flex', alignItems: 'center', gap: 6, background: 'transparent',
             border: '1px solid rgba(255,255,255,0.1)', color: '#c0c3ce', padding: '6px 12px',
@@ -378,7 +443,6 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             { id: 'monitor', icon: Activity, label: 'Live Trade Monitor' },
             { id: 'leads', icon: Users, label: 'Sales & Leads Tracker' },
             { id: 'financial', icon: DollarSign, label: 'Financial Desk' },
-            { id: 'payment-settings', icon: Settings, label: 'Payment Settings' },
           ].map(item => {
             const Icon = item.icon
             const isActive = activeTab === item.id
@@ -642,12 +706,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               </div>
             )}
 
-            {/* ── Payment Settings ── */}
-            {activeTab === 'payment-settings' && (
-              <div className="crm-section fade-in" style={{ overflowY: 'auto', height: '100%' }}>
-                <PaymentSettingsPanel />
-              </div>
-            )}
+
             
           </div>
         </div>
@@ -743,6 +802,64 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 }}
               >
                 {creatingTrader ? 'REGISTERING...' : 'CONFIRM REGISTRATION'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Subscription Payment Modal ── */}
+      {isPaymentModalOpen && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20
+        }}>
+          <div style={{
+            width: '100%', maxWidth: 450, background: '#0b0e11', borderRadius: 16, border: '1px solid rgba(255,215,0,0.2)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5)', overflow: 'hidden'
+          }}>
+            <div style={{ padding: '24px 30px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: '#FFD700' }}>SUBSCRIPTION PAYMENT</h2>
+              <button onClick={() => setIsPaymentModalOpen(false)} style={{ background: 'transparent', border: 'none', color: '#8a8e9b', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            
+            <form onSubmit={handleSubscriptionPayment} style={{ padding: 30, display: 'flex', flexDirection: 'column', gap: 15 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>AMOUNT (USD)</label>
+                <input 
+                  type="number" required
+                  value={paymentAmount}
+                  onChange={e => setPaymentAmount(e.target.value)}
+                  placeholder="0.00"
+                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} 
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PAYMENT METHOD</label>
+                <select 
+                  required
+                  value={paymentMethod}
+                  onChange={e => setPaymentMethod(e.target.value)}
+                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', cursor: 'pointer' }}
+                >
+                  <option value="">— Select Method —</option>
+                  <option value="crypto_usdt" style={{ color: '#000' }}>USDT (Tether)</option>
+                  <option value="crypto_btc" style={{ color: '#000' }}>Bitcoin (BTC)</option>
+                  <option value="bank_transfer" style={{ color: '#000' }}>Bank Transfer</option>
+                </select>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={paymentLoading}
+                style={{ 
+                  width: '100%', padding: 14, marginTop: 10, background: '#FFD700', border: 'none', 
+                  borderRadius: 8, color: '#000', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+                  opacity: paymentLoading ? 0.6 : 1
+                }}
+              >
+                {paymentLoading ? 'SUBMITTING...' : 'SUBMIT PAYMENT'}
               </button>
             </form>
           </div>

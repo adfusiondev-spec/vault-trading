@@ -2,36 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Crown, Building2, Globe, Database, LogOut, ShieldCheck, ShieldAlert, Check, Plus, DollarSign, AlertTriangle, Key, X, Settings2, Power, Play, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
+import { Crown, Building2, Globe, Database, LogOut, ShieldCheck, ShieldAlert, Check, Plus, DollarSign, AlertTriangle, Key, X, Settings2, Settings, Power, Play, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { FinancialDesk } from '@/components/admin/FinancialDesk'
+import { useNotifications } from '@/hooks/useNotifications'
+import { Bell } from 'lucide-react'
+import PaymentSettingsPanel from '@/components/admin/PaymentSettingsPanel'
 
-// Extended Tenant Data Structure
-export type Tenant = {
-  id: string
-  company: string
-  slug?: string
-  adminEmail: string
-  adminPassword?: string
-  clients: number
-  status: 'Active' | 'Suspended'
-  isVerified: boolean
-  markets: {
-    crypto: boolean
-    saudi: boolean
-    forex: boolean
-    energy: boolean
-  }
-  billingCycle: 'Monthly' | 'Annual'
-  subscriptionPackage: string
-  expiresAt: string
-}
 
-const INITIAL_TENANTS: Tenant[] = [
-  { id: 'T-001', company: 'Apex Trading Corp', adminEmail: 'apex_admin@thevault.io', clients: 1248, status: 'Active', isVerified: true, markets: { crypto: true, saudi: true, forex: true, energy: false }, billingCycle: 'Annual', subscriptionPackage: 'annual_vip', expiresAt: new Date(Date.now() + 86400000 * 365).toISOString() },
-  { id: 'T-002', company: 'Global Hedge Ltd', adminEmail: 'global_sub@thevault.io', clients: 85, status: 'Active', isVerified: true, markets: { crypto: true, saudi: false, forex: true, energy: true }, billingCycle: 'Monthly', subscriptionPackage: 'monthly_standard', expiresAt: new Date(Date.now() + 86400000 * 30).toISOString() },
-  { id: 'T-003', company: 'Desert Alpha', adminEmail: 'desert_alpha@thevault.io', clients: 412, status: 'Suspended', isVerified: false, markets: { crypto: false, saudi: true, forex: false, energy: true }, billingCycle: 'Annual', subscriptionPackage: 'trial', expiresAt: new Date(Date.now() - 86400000).toISOString() }
-]
 
 export default function SuperAdminDashboard() {
   const router = useRouter()
@@ -40,9 +18,10 @@ export default function SuperAdminDashboard() {
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
+  const [adminId, setAdminId] = useState<string | null>(null)
 
   // Tenants & Modal State
-  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [companies, setCompanies] = useState<any[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTenant, setEditingTenant] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -92,6 +71,7 @@ export default function SuperAdminDashboard() {
           return
         }
         setIsAuthorized(true)
+        setAdminId(session.user.id)
       } catch (e) {
         console.error('Auth check error:', e)
         router.push('/login')
@@ -100,36 +80,38 @@ export default function SuperAdminDashboard() {
       }
     }
     checkAuth()
-
-    // Load tenants and handle expiration logic
-    const stored = localStorage.getItem('vault_tenants')
-    let parsed: Tenant[] = INITIAL_TENANTS
-    
-    if (stored) {
-      try { parsed = JSON.parse(stored) } catch (e) { console.error('Failed to parse stored tenants') }
-    }
-    
-    const now = new Date()
-    const updated = parsed.map(t => {
-      // Ensure each tenant has a unique ID if it was part of a duplicate collision
-      if (t.id.startsWith('T-') && parsed.filter(p => p.id === t.id).length > 1) {
-        t.id = t.id + '-' + Math.random().toString(36).substring(2, 7)
-      }
-
-      if (t.status === 'Active' && new Date(t.expiresAt) < now) {
-        return { ...t, status: 'Suspended' as const }
-      }
-      return t
-    })
-    setTenants(updated)
   }, [router])
 
-  // Persist whenever tenants state changes
   useEffect(() => {
-    if (mounted) {
-      localStorage.setItem('vault_tenants', JSON.stringify(tenants))
+    const supabase = createClient()
+
+    const fetchTenants = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'sub_admin')
+        .order('created_at', { ascending: false })
+      
+      if (data && !error) {
+        setCompanies(data)
+      }
     }
-  }, [tenants, mounted])
+
+    fetchTenants()
+
+    const channel = supabase.channel('realtime-tenants-sync')
+      .on('postgres_changes', {
+        event: '*', 
+        schema: 'public',
+        table: 'profiles',
+        filter: "role=eq.sub_admin"
+      }, () => {
+        fetchTenants()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem('vault_user_email')
@@ -145,38 +127,9 @@ export default function SuperAdminDashboard() {
     window.location.href = '/login'
   }
 
-  const handleMarketToggle = (tenantId: string, marketKey: keyof Tenant['markets']) => {
-    setTenants(prev => prev.map(t => {
-      if (t.id === tenantId) {
-        const newMarkets = { ...t.markets, [marketKey]: !t.markets[marketKey] }
-        if (tenantId === 'T-001') localStorage.setItem('vault_tenant_markets', JSON.stringify(newMarkets))
-        return { ...t, markets: newMarkets }
-      }
-      return t
-    }))
-  }
-
-  const handleVerificationToggle = (tenantId: string) => {
-    setTenants(prev => prev.map(t => {
-      if (t.id === tenantId) return { ...t, isVerified: !t.isVerified }
-      return t
-    }))
-  }
-
-  const handleToggleStatus = (tenantId: string) => {
-    setTenants(prev => prev.map(t => {
-      if (t.id === tenantId) {
-        const newStatus = t.status === 'Active' ? 'Suspended' : 'Active'
-        // If reactivating manually, grant +30 days if expired
-        let newExpires = t.expiresAt
-        if (newStatus === 'Active' && new Date(t.expiresAt) < new Date()) {
-          newExpires = new Date(Date.now() + 86400000 * 30).toISOString()
-        }
-        return { ...t, status: newStatus, expiresAt: newExpires }
-      }
-      return t
-    }))
-  }
+  const handleMarketToggle = (tenantId: string, marketKey: string) => {}
+  const handleVerificationToggle = (tenantId: string) => {}
+  const handleToggleStatus = (tenantId: string) => {}
 
   const handleDeleteCompany = async (tenantId: string) => {
     // If not in confirmation state, switch to it
@@ -210,7 +163,7 @@ export default function SuperAdminDashboard() {
       }
       
       if (response.ok) {
-        setTenants(prev => prev.filter(t => t.id !== tenantId))
+        setCompanies(prev => prev.filter((t: any) => t.id !== tenantId))
       } else {
         const errorMsg = result.error || 'خطأ غير معروف'
         const details = result.details ? `\n\n(${result.details})` : ''
@@ -224,12 +177,10 @@ export default function SuperAdminDashboard() {
     }
   }
 
-  const handleResetLocalData = () => {
-    if (confirm('تنبيه: سيتم مسح جميع البيانات المحلية فقط. هل أنت متأكد؟')) {
-      localStorage.removeItem('vault_tenants')
-      window.location.reload()
-    }
-  }
+
+
+  const { notifications, unreadCount, markAsRead } = useNotifications(adminId || '', 'super_admin')
+  const [showNotifications, setShowNotifications] = useState(false)
 
   // Mange Company & Modal Interactions
   const handleOpenAddCompany = () => {
@@ -248,21 +199,7 @@ export default function SuperAdminDashboard() {
     setIsModalOpen(true)
   }
 
-  const handleManageCompany = (t: Tenant) => {
-    setEditingTenant(t.id)
-    setFormData({
-      id: t.id,
-      company: t.company,
-      slug: t.slug || '',
-      adminEmail: t.adminEmail,
-      adminPassword: t.adminPassword || '',
-      markets: { ...t.markets },
-      billingCycle: t.billingCycle,
-      subscriptionPackage: t.subscriptionPackage || 'trial',
-      expiresAt: t.expiresAt
-    })
-    setIsModalOpen(true)
-  }
+
 
   const handleSaveCompany = async () => {
     if (!formData.company || !formData.adminEmail) return alert('Please fill in required fields.')
@@ -275,17 +212,7 @@ export default function SuperAdminDashboard() {
     }
 
     if (editingTenant) {
-      setTenants(prev => prev.map(t => t.id === editingTenant ? {
-        ...t,
-        company: formData.company,
-        adminEmail: formData.adminEmail,
-        adminPassword: formData.adminPassword,
-        markets: formData.markets,
-        billingCycle: formData.billingCycle,
-        subscriptionPackage: formData.subscriptionPackage,
-        expiresAt: computeExpires,
-        status: new Date(computeExpires) > new Date() ? 'Active' : 'Suspended'
-      } : t))
+      // Local state mutation removed for real-time sync.
     } else {
       const response = await fetch('/api/create-tenant', {
         method: 'POST',
@@ -306,21 +233,7 @@ export default function SuperAdminDashboard() {
         return
       }
 
-      const newTenant: Tenant = {
-        id: result.user_id || formData.id,
-        company: formData.company,
-        slug: formData.slug,
-        adminEmail: formData.adminEmail,
-        adminPassword: formData.adminPassword,
-        clients: 0,
-        status: 'Active',
-        isVerified: true,
-        markets: formData.markets,
-        billingCycle: formData.billingCycle,
-        subscriptionPackage: formData.subscriptionPackage,
-        expiresAt: computeExpires
-      }
-      setTenants([newTenant, ...tenants])
+      // Local mock injection removed for real-time sync.
     }
 
     const adminClient = createClient()
@@ -384,6 +297,30 @@ export default function SuperAdminDashboard() {
             <Globe size={14} color="#FFD700" />
             <span style={{ fontSize: 12, letterSpacing: '0.05em', color: '#FFD700', fontWeight: 600 }}>HQ OVERSIGHT ACTIVATED</span>
           </div>
+
+          <div style={{ position: 'relative' }}>
+            <div onClick={() => setShowNotifications(!showNotifications)} style={{ position: 'relative', cursor: 'pointer' }}>
+              <Bell size={16} color="#787b86" />
+              {unreadCount > 0 && <div style={{ position: 'absolute', top: -4, right: -4, background: '#ef5350', color: '#fff', fontSize: 9, fontWeight: 700, width: 14, height: 14, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
+            </div>
+            {showNotifications && (
+              <div style={{ position: 'absolute', top: 30, right: -120, width: 300, background: 'rgba(4,6,8,0.95)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 700, color: '#fff' }}>System Notifications</div>
+                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: 'center', color: '#8a8e9b', fontSize: 12 }}>No notifications yet.</div>
+                  ) : notifications.map((n:any) => (
+                    <div key={n.id} onClick={() => !n.read && markAsRead(n.id)} style={{ padding: 12, borderBottom: '1px solid var(--border)', cursor: 'pointer', background: n.read ? 'transparent' : 'rgba(255,215,0,0.05)' }}>
+                      <div style={{ fontSize: 12, color: n.read ? '#c0c3ce' : '#fff', fontWeight: n.read ? 400 : 600 }}>{n.title || 'Notification'}</div>
+                      <div style={{ fontSize: 11, color: '#8a8e9b', marginTop: 4 }}>{n.message}</div>
+                      <div style={{ fontSize: 10, color: '#8a8e9b', marginTop: 6 }}>{new Date(n.created_at).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button onClick={handleLogout} style={{
             display: 'flex', alignItems: 'center', gap: 6, background: 'transparent',
             border: 'none', color: '#c0c3ce', padding: '6px 12px',
@@ -404,7 +341,8 @@ export default function SuperAdminDashboard() {
           {[
             { id: 'tenants', icon: Building2, label: 'Leasing Companies' },
             { id: 'system', icon: Database, label: 'Global Architecture' },
-            { id: 'financial', icon: DollarSign, label: 'Financial Desk' },
+            { id: 'financial', icon: DollarSign, label: 'Subscription Payments' },
+            { id: 'payment-settings', icon: Settings, label: 'Global Payment Settings' },
             { id: 'audit', icon: ShieldCheck, label: 'Security & Audit Logs' },
           ].map(item => {
             const Icon = item.icon
@@ -436,8 +374,8 @@ export default function SuperAdminDashboard() {
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, padding: 24, borderBottom: '1px solid var(--border)'
           }}>
             <SummaryCard title="Global System Volume" value="$28.5B" icon={Globe} color="#FFD700" />
-            <SummaryCard title="Active Tenants" value={tenants.length.toString()} icon={Building2} color="#fff" />
-            <SummaryCard title="Total Connected Clients" value={tenants.reduce((sum, t) => sum + t.clients, 0).toLocaleString()} icon={Globe} color="#c0c3ce" />
+            <SummaryCard title="Active Tenants" value={companies.length.toString()} icon={Building2} color="#fff" />
+            <SummaryCard title="Total Connected Clients" value="-" icon={Globe} color="#c0c3ce" />
             <SummaryCard title="System Integrity" value="100%" icon={ShieldCheck} color="#26a69a" />
           </div>
 
@@ -449,16 +387,7 @@ export default function SuperAdminDashboard() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                   <h2 style={{ fontSize: 20, fontWeight: 700, color: '#FFD700', letterSpacing: '0.05em', margin: 0 }}>TENANT MANAGEMENT BOARD</h2>
                   <div style={{ display: 'flex', gap: 12 }}>
-                    <button 
-                      onClick={handleResetLocalData}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 8,
-                        background: 'rgba(239,83,80,0.1)', border: '1px solid rgba(239,83,80,0.3)',
-                        color: '#ef5350', fontSize: 13, fontWeight: 700, cursor: 'pointer'
-                      }}
-                    >
-                      <Database size={16} /> RESET LOCAL DATA
-                    </button>
+
 
                     <button 
                       onClick={handleOpenAddCompany}
@@ -489,93 +418,136 @@ export default function SuperAdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {tenants.map(tenant => (
-                        <tr key={tenant.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      {companies.map(company => {
+                        const isVerified = true // Fallback dummy data for UI display
+                        const markets = { crypto: true, saudi: true, forex: true, energy: true } // Fallback
+                        return (
+                        <tr key={company.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                           <td style={{ padding: '16px 20px' }}>
-                            <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{tenant.company}</div>
-                            <div style={{ color: '#8a8e9b', fontFamily: 'monospace', fontSize: 11, marginTop: 4 }}>ID: {tenant.id}</div>
+                            <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{company.full_name}</div>
+                            <div style={{ color: '#8a8e9b', fontFamily: 'monospace', fontSize: 11, marginTop: 4 }}>ID: {company.id}</div>
                           </td>
-                          <td style={{ padding: '16px 20px', fontWeight: 500, color: '#c0c3ce' }}>{tenant.adminEmail}</td>
-                          <td style={{ padding: '16px 20px', fontFamily: 'monospace', fontSize: 15 }}>{tenant.clients.toLocaleString()}</td>
+                          <td style={{ padding: '16px 20px', fontWeight: 500, color: '#c0c3ce' }}>{company.email}</td>
+                          <td style={{ padding: '16px 20px', fontFamily: 'monospace', fontSize: 15 }}>—</td>
                           
                           <td style={{ padding: '16px 20px' }}>
                             <span style={{ 
                               display: 'inline-flex', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                              background: tenant.status === 'Active' ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)',
-                              color: tenant.status === 'Active' ? '#26a69a' : '#ef5350', border: `1px solid ${tenant.status === 'Active' ? '#26a69a' : '#ef5350'}`
+                              background: 'rgba(38,166,154,0.1)',
+                              color: '#26a69a', border: `1px solid #26a69a`
                             }}>
-                              {tenant.status.toUpperCase()}
+                              {company.subscription_package || 'Standard'}
                             </span>
                           </td>
 
                           <td style={{ padding: '16px 20px' }}>
                             <button 
-                              onClick={() => handleVerificationToggle(tenant.id)}
+                              onClick={() => handleVerificationToggle(company.id)}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6,
-                                background: tenant.isVerified ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)',
-                                border: `1px solid ${tenant.isVerified ? '#26a69a' : '#ef5350'}`,
-                                color: tenant.isVerified ? '#26a69a' : '#ef5350',
+                                background: isVerified ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)',
+                                border: `1px solid ${isVerified ? '#26a69a' : '#ef5350'}`,
+                                color: isVerified ? '#26a69a' : '#ef5350',
                                 fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
                               }}
                             >
-                              {tenant.isVerified ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
-                              {tenant.isVerified ? 'VERIFIED' : 'UNVERIFIED'}
+                              {isVerified ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
+                              {isVerified ? 'VERIFIED' : 'UNVERIFIED'}
                             </button>
                           </td>
                           
                           <td style={{ padding: '16px 20px' }}>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              <MarketToggle label="Crypto" active={tenant.markets.crypto} onToggle={() => handleMarketToggle(tenant.id, 'crypto')} />
-                              <MarketToggle label="Saudi Stocks" active={tenant.markets.saudi} onToggle={() => handleMarketToggle(tenant.id, 'saudi')} />
-                              <MarketToggle label="Forex" active={tenant.markets.forex} onToggle={() => handleMarketToggle(tenant.id, 'forex')} />
-                              <MarketToggle label="Energy" active={tenant.markets.energy} onToggle={() => handleMarketToggle(tenant.id, 'energy')} />
+                              <MarketToggle label="Crypto" active={markets.crypto} onToggle={() => handleMarketToggle(company.id, 'crypto')} />
+                              <MarketToggle label="Saudi Stocks" active={markets.saudi} onToggle={() => handleMarketToggle(company.id, 'saudi')} />
+                              <MarketToggle label="Forex" active={markets.forex} onToggle={() => handleMarketToggle(company.id, 'forex')} />
+                              <MarketToggle label="Energy" active={markets.energy} onToggle={() => handleMarketToggle(company.id, 'energy')} />
                             </div>
                           </td>
                           <td style={{ 
                             padding: '16px 20px', 
                             fontWeight: 700, 
-                            color: tenant.billingCycle === 'Annual' ? '#FFD700' : '#8a8e9b',
-                            textShadow: tenant.billingCycle === 'Annual' ? '0 0 8px rgba(255,215,0,0.5)' : 'none'
+                            color: '#FFD700',
+                            textShadow: '0 0 8px rgba(255,215,0,0.5)'
                           }}>
-                            {tenant.billingCycle}
+                            {new Date(company.created_at).toLocaleDateString()}
                           </td>
 
                           <td style={{ padding: '16px 20px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                              <button onClick={() => handleToggleStatus(tenant.id)} style={{
+                              <button onClick={() => {
+                                setEditingTenant(company.id)
+                                setFormData({
+                                  id: company.id,
+                                  company: company.full_name || '',
+                                  slug: company.company_slug || '',
+                                  adminEmail: company.email || '',
+                                  adminPassword: '',
+                                  markets: { crypto: false, saudi: false, forex: false, energy: false },
+                                  billingCycle: 'Monthly',
+                                  subscriptionPackage: company.subscription_package || 'trial',
+                                  expiresAt: ''
+                                })
+                                setIsModalOpen(true)
+                              }} style={{ 
                                 display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, height: 32,
-                                border: `1px solid ${tenant.status === 'Active' ? 'rgba(239,83,80,0.5)' : 'rgba(38,166,154,0.5)'}`, 
-                                background: tenant.status === 'Active' ? 'rgba(239,83,80,0.1)' : 'rgba(38,166,154,0.1)',
-                                color: tenant.status === 'Active' ? '#ef5350' : '#26a69a',
-                                fontSize: 11, fontWeight: 700, cursor: 'pointer'
-                              }}>
-                                <Power size={13} /> {tenant.status === 'Active' ? 'SUSPEND' : 'ACTIVATE'}
-                              </button>
-                              <button onClick={() => handleManageCompany(tenant)} style={{
-                                display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, height: 32,
-                                border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)',
-                                color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                                background: 'transparent',
+                                border: '1px solid rgba(255,215,0,0.5)',
+                                color: '#FFD700', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
                               }}>
                                 <Settings2 size={13} /> MANAGE
                               </button>
+                              <button onClick={() => handleToggleStatus(company.id)} style={{
+                                display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, height: 32,
+                                background: 'transparent',
+                                border: `1px solid rgba(239,83,80,0.3)`,
+                                color: '#ef5350', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                              }}>
+                                <Power size={13} />
+                              </button>
                               <button 
-                                disabled={deletingId === tenant.id} 
-                                onClick={() => handleDeleteCompany(tenant.id)} 
+                                onClick={async () => {
+                                  try {
+                                    localStorage.setItem('vault_impersonated_tenant_id', company.id)
+                                    window.location.href = `/sub-admin/${company.company_slug}`
+                                  } catch (e) {
+                                    alert('Navigation Error: ' + e)
+                                  }
+                                }} 
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, height: 32,
-                                  border: `1px solid ${confirmDeleteId === tenant.id ? '#ff9800' : 'rgba(239,83,80,0.2)'}`,
-                                  background: confirmDeleteId === tenant.id ? '#ff9800' : 'rgba(239,83,80,0.05)',
-                                  color: confirmDeleteId === tenant.id ? '#000' : '#ef5350', 
-                                  fontSize: 11, fontWeight: 800, 
-                                  cursor: deletingId === tenant.id ? 'not-allowed' : 'pointer', 
-                                  transition: 'all 0.2s',
-                                  opacity: deletingId === tenant.id ? 0.5 : 1
+                                  background: '#FFD700', border: 'none',
+                                  color: '#000', fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s'
                                 }}
                               >
-                                {deletingId === tenant.id ? (
+                                <Play size={13} fill="#000" /> ENTER
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (deletingId === company.id) return
+                                  if (confirmDeleteId === company.id) {
+                                    handleDeleteTenant(company.id)
+                                  } else {
+                                    setConfirmDeleteId(company.id)
+                                    setTimeout(() => setConfirmDeleteId(null), 3000)
+                                  }
+                                }}
+                                disabled={deletingId === company.id}
+                                style={{ 
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  width: 32, height: 32, borderRadius: 6,
+                                  background: confirmDeleteId === company.id ? '#ef5350' : 'rgba(239,83,80,0.1)',
+                                  border: confirmDeleteId === company.id ? 'none' : '1px solid rgba(239,83,80,0.3)',
+                                  color: confirmDeleteId === company.id ? '#000' : '#ef5350', 
+                                  fontSize: 11, fontWeight: 800, 
+                                  cursor: deletingId === company.id ? 'not-allowed' : 'pointer', 
+                                  transition: 'all 0.2s',
+                                  opacity: deletingId === company.id ? 0.5 : 1
+                                }}
+                              >
+                                {deletingId === company.id ? (
                                   <div style={{width: 14, height: 14, borderRadius: '50%', border: '2px solid #ef5350', borderTopColor: 'transparent', animation: 'spin 1s linear infinite'}} />
-                                ) : confirmDeleteId === tenant.id ? (
+                                ) : confirmDeleteId === company.id ? (
                                   'SURE?'
                                 ) : (
                                   <Trash2 size={13} />
@@ -585,7 +557,8 @@ export default function SuperAdminDashboard() {
                           </td>
 
                         </tr>
-                      ))}
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -594,7 +567,13 @@ export default function SuperAdminDashboard() {
             
             {activeTab === 'financial' && <FinancialDesk />}
             
-            {activeTab !== 'tenants' && activeTab !== 'financial' && (
+            {activeTab === 'payment-settings' && (
+              <div className="crm-section fade-in" style={{ overflowY: 'auto', height: '100%' }}>
+                <PaymentSettingsPanel />
+              </div>
+            )}
+            
+            {activeTab !== 'tenants' && activeTab !== 'financial' && activeTab !== 'payment-settings' && (
               <div className="crm-section fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5 }}>
                 <Key size={48} color="#FFD700" style={{ marginBottom: 20 }} />
                 <h3 style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>Authorized Personnel Only</h3>

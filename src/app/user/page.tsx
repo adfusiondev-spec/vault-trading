@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { useMarketData, type TickerData, type PriceMap } from '@/hooks/useMarketData'
 import dynamic from 'next/dynamic'
 import { useTransactions } from '@/hooks/useTransactions'
+import { useNotifications } from '@/hooks/useNotifications'
 
 const CandlestickChart = dynamic(() => import('@/components/CandlestickChart'), { ssr: false })
 
@@ -130,6 +131,8 @@ export default function Dashboard() {
   const [symbol, setSymbol] = useState('BTCUSDT')
   const [tradeAmt, setTradeAmt] = useState('')
   const [bottomTab, setBottomTab] = useState('statements')
+  
+  const [showNotifications, setShowNotifications] = useState(false)
   
   const [actionTab, setActionTab] = useState('deposit') // deposit | withdraw
   const [showToast, setShowToast] = useState(false)
@@ -308,6 +311,8 @@ export default function Dashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [user?.id, supabase, refresh])
 
+  const { notifications, unreadCount, markAsRead } = useNotifications(user?.id, user?.role || 'trader')
+
   const liveCurrent = prices[symbol]?.price || 0
   const baseChartPrice = useMemo(() => {
     const it = MARKET_GROUPS.flatMap(g => g.items).find(i => i.symbol === symbol)
@@ -332,7 +337,28 @@ export default function Dashboard() {
             {connected ? <Wifi size={14} /> : <AlertCircle size={14} />}
             <span style={{ fontSize: 11, fontWeight: 600 }}>{connected ? 'LIVE' : 'DISCONNECTED'}</span>
           </div>
-          <Bell size={16} color="#787b86" style={{ cursor: 'pointer' }} />
+          <div style={{ position: 'relative' }}>
+            <div onClick={() => setShowNotifications(!showNotifications)} style={{ position: 'relative', cursor: 'pointer' }}>
+              <Bell size={16} color="#787b86" />
+              {unreadCount > 0 && <div style={{ position: 'absolute', top: -4, right: -4, background: '#ef5350', color: '#fff', fontSize: 9, fontWeight: 700, width: 14, height: 14, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
+            </div>
+            {showNotifications && (
+              <div style={{ position: 'absolute', top: 30, right: -80, width: 300, background: '#1a1e2e', border: '1px solid #2a2e3b', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid #2a2e3b', fontSize: 13, fontWeight: 700, color: '#fff' }}>Notifications</div>
+                <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: 'center', color: '#787b86', fontSize: 12 }}>No notifications yet.</div>
+                  ) : notifications.map((n:any) => (
+                    <div key={n.id} onClick={() => !n.read && markAsRead(n.id)} style={{ padding: 12, borderBottom: '1px solid #2a2e3b', cursor: 'pointer', background: n.read ? 'transparent' : 'rgba(38,166,154,0.05)' }}>
+                      <div style={{ fontSize: 12, color: n.read ? '#d1d4dc' : '#fff', fontWeight: n.read ? 400 : 600 }}>{n.title || 'Notification'}</div>
+                      <div style={{ fontSize: 11, color: '#787b86', marginTop: 4 }}>{n.message}</div>
+                      <div style={{ fontSize: 10, color: '#787b86', marginTop: 6 }}>{new Date(n.created_at).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <div style={{ width: 1, height: 24, background: '#2a2e3b' }} />
           <div onClick={openProfilePanel} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <div style={{ background: '#2a2e3b', color: '#FFD700', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>G</div>
