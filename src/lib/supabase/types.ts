@@ -5,6 +5,12 @@ export type Profile = {
   role: 'super_admin' | 'sub_admin' | 'trader'
   assigned_to: string | null
   created_at: string
+  is_banned?: boolean
+  subscription_package?: string
+  market_access?: string[]
+  phone_number?: string
+  country?: string
+  notes?: string
 }
 
 export type Wallet = {

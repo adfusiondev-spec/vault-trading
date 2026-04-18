@@ -6,12 +6,14 @@ import {
   Search, BarChart2, Briefcase, ChevronDown, CheckCircle2,
   AlertCircle, ChevronRight, Activity, Percent, X
 } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useMarketData, type TickerData, type PriceMap } from '@/hooks/useMarketData'
 import dynamic from 'next/dynamic'
 import { useTransactions } from '@/hooks/useTransactions'
 import { useNotifications } from '@/hooks/useNotifications'
+import { useTranslation } from '@/lib/i18n'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 const CandlestickChart = dynamic(() => import('@/components/CandlestickChart'), { ssr: false })
 
@@ -122,12 +124,15 @@ function ensureFlashStyles() {
 
 export default function Dashboard() {
   const router = useRouter()
+  const { t } = useTranslation()
   const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [wal, setWal] = useState<any>(null)
   const [orders, setOrders] = useState<any[]>([])
+  const [closedOrders, setClosedOrders] = useState<any[]>([])
   const [txs, setTxs] = useState<any[]>([])
-  
+  const [watchlistSearch, setWatchlistSearch] = useState('')
+
   const [symbol, setSymbol] = useState('BTCUSDT')
   const [tradeAmt, setTradeAmt] = useState('')
   const [bottomTab, setBottomTab] = useState('statements')
@@ -228,7 +233,18 @@ export default function Dashboard() {
   const refresh = useCallback(async (uid: string) => {
     if (!uid) return
     const { data: o } = await supabase.from('trades').select('*').eq('user_id', uid).order('created_at', { ascending: false })
-    if (o) setOrders(o.map((x:any)=>({ id: x.id, type: x.type==='buy'?'Buy':'Sell', symbol: x.symbol, label: x.symbol, amountUSD: Number(x.amount), qty: Number(x.quantity), entryPrice: Number(x.entry_price), status: x.status==='open'?'Open':'Completed', created_at: x.created_at })))
+    if (o) {
+      const mapped = o.map((x:any) => ({
+        id: x.id, type: x.type==='buy'?'Buy':'Sell', symbol: x.symbol, label: x.symbol,
+        amountUSD: Number(x.amount), qty: Number(x.quantity),
+        entryPrice: Number(x.entry_price), exitPrice: Number(x.exit_price || 0),
+        pnl: Number(x.profit_loss || 0),
+        status: x.status==='open'?'Open': x.status==='closed'?'Closed':'Completed',
+        created_at: x.created_at, closed_at: x.closed_at,
+      }))
+      setOrders(mapped.filter(t => t.status === 'Open'))
+      setClosedOrders(mapped.filter(t => t.status === 'Closed'))
+    }
     const { data: w } = await supabase.from('wallets').select('*').eq('user_id', uid).single()
     if (w) setWal(w)
   }, [supabase])
@@ -319,6 +335,20 @@ export default function Dashboard() {
     return it?.base || liveCurrent || 2000
   }, [symbol, liveCurrent > 0])
 
+  const calculateLivePnL = useCallback((trade: any): number => {
+    const livePrice = prices[trade.symbol]?.price || trade.entryPrice
+    return trade.type === 'Buy'
+      ? (livePrice - trade.entryPrice) * trade.qty
+      : (trade.entryPrice - livePrice) * trade.qty
+  }, [prices])
+
+  const handleCloseTrade = useCallback(async (tradeId: string, symbol: string) => {
+    const exitPrice = prices[symbol]?.price || 0
+    const { error } = await supabase.rpc('close_trade', { p_trade_id: tradeId, p_exit_price: exitPrice })
+    if (error) alert(error.message)
+    else if (userIdRef.current) refresh(userIdRef.current)
+  }, [prices, supabase, refresh])
+
   if (!mounted) return null
 
   return (
@@ -367,14 +397,15 @@ export default function Dashboard() {
           </div>
           <div style={{ width: 1, height: 24, background: '#2a2e3b' }} />
           <button onClick={async () => { await supabase.auth.signOut(); localStorage.clear(); router.push('/login') }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', color: '#787b86', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            <LogOut size={14} /> LOGOUT
+            <LogOut size={14} /> {t.logout}
           </button>
+          <LanguageToggle />
           <div style={{ display: 'flex', gap: 8, marginLeft: 8 }}>
              <button type="button" onClick={() => { setModalType('withdrawal'); setModalOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', padding: '4px 12px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-               <ArrowUpToLine size={12} /> Withdraw
+               <ArrowUpToLine size={12} /> {t.withdrawal}
              </button>
              <button type="button" onClick={() => { setModalType('deposit'); setModalOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFD700', border: 'none', color: '#000', padding: '4px 16px', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-               <ArrowDownToLine size={12} /> Deposit
+               <ArrowDownToLine size={12} /> {t.deposit}
              </button>
           </div>
         </div>
@@ -384,9 +415,20 @@ export default function Dashboard() {
         
         {/* LEFT SIDEBAR: WATCHLIST */}
         <div style={{ width: 300, background: '#131722', borderRight: '1px solid #2a2e3b', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #1e222d' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#FFD700' }}>Watchlist</span>
-            <Search size={14} color="#787b86" />
+          <div style={{ padding: '8px 16px', borderBottom: '1px solid #1e222d' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#FFD700' }}>Watchlist</span>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <Search size={12} color="#787b86" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                placeholder="Search assets…"
+                value={watchlistSearch}
+                onChange={e => setWatchlistSearch(e.target.value)}
+                style={{ width: '100%', padding: '6px 8px 6px 26px', background: 'rgba(255,255,255,0.04)', border: '1px solid #2a2e3b', borderRadius: 4, color: '#d1d4dc', fontSize: 11, outline: 'none' }}
+              />
+            </div>
           </div>
           <div style={{ display: 'flex', fontSize: 10, color: '#787b86', padding: '8px 16px', fontWeight: 600, borderBottom: '1px solid #1e222d' }}>
             <div style={{ flex: 1.5 }}>SYMBOL</div>
@@ -394,17 +436,32 @@ export default function Dashboard() {
             <div style={{ flex: 1, textAlign: 'right' }}>SELL</div>
             <div style={{ flex: 0.8, textAlign: 'right' }}>SPD</div>
           </div>
-          
+
           <div className="scroll-hide" style={{ flex: 1, overflowY: 'auto' }}>
-            <div style={{ padding: '12px 16px 6px', fontSize: 10, fontWeight: 700, color: '#787b86', letterSpacing: '0.05em' }}>CRYPTO · LIVE</div>
-            {BINANCE_ASSETS.map(a => <AssetRow key={a.symbol} asset={a} tick={prices[a.symbol]} active={symbol===a.symbol} onClick={()=>setSymbol(a.symbol)} />)}
-            
-            {MARKET_GROUPS.map(g => (
-              <React.Fragment key={g.category}>
-                <div style={{ padding: '16px 16px 6px', fontSize: 10, fontWeight: 700, color: '#787b86', letterSpacing: '0.05em' }}>{g.category}</div>
-                {g.items.map(a => <AssetRow key={a.symbol} asset={a} tick={prices[a.symbol]} active={symbol===a.symbol} onClick={()=>setSymbol(a.symbol)} />)}
-              </React.Fragment>
-            ))}
+            {(() => {
+              const q = watchlistSearch.toLowerCase()
+              const filteredCrypto = BINANCE_ASSETS.filter(a => !q || a.symbol.toLowerCase().includes(q) || a.short.toLowerCase().includes(q))
+              const filteredGroups = MARKET_GROUPS.map(g => ({ ...g, items: g.items.filter(a => !q || a.symbol.toLowerCase().includes(q) || a.short.toLowerCase().includes(q)) })).filter(g => g.items.length > 0)
+              return (
+                <>
+                  {filteredCrypto.length > 0 && (
+                    <>
+                      <div style={{ padding: '12px 16px 6px', fontSize: 10, fontWeight: 700, color: '#787b86', letterSpacing: '0.05em' }}>CRYPTO · LIVE</div>
+                      {filteredCrypto.map(a => <AssetRow key={a.symbol} asset={a} tick={prices[a.symbol]} active={symbol===a.symbol} onClick={()=>setSymbol(a.symbol)} />)}
+                    </>
+                  )}
+                  {filteredGroups.map(g => (
+                    <React.Fragment key={g.category}>
+                      <div style={{ padding: '16px 16px 6px', fontSize: 10, fontWeight: 700, color: '#787b86', letterSpacing: '0.05em' }}>{g.category}</div>
+                      {g.items.map(a => <AssetRow key={a.symbol} asset={a} tick={prices[a.symbol]} active={symbol===a.symbol} onClick={()=>setSymbol(a.symbol)} />)}
+                    </React.Fragment>
+                  ))}
+                  {filteredCrypto.length === 0 && filteredGroups.length === 0 && (
+                    <div style={{ padding: 24, textAlign: 'center', color: '#787b86', fontSize: 11 }}>No assets found.</div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         </div>
 
@@ -464,11 +521,11 @@ export default function Dashboard() {
                </div>
              </div>
              <div style={{ display: 'flex', gap: 12 }}>
-               <button onClick={()=>execTrade('buy')} style={{ width: 120, height: 40, background: '#26a69a', color: '#fff', fontWeight: 700, border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                 ▲ BUY
+               <button onClick={()=>execTrade('buy')} style={{ flex: '1 1 50%', height: 40, background: '#26a69a', color: '#fff', fontWeight: 700, border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap', minWidth: 0 }}>
+                 ▲ {t.buy}
                </button>
-               <button onClick={()=>execTrade('sell')} style={{ width: 120, height: 40, background: 'transparent', border: '1px solid #ef5350', color: '#ef5350', fontWeight: 700, borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.2s' }}>
-                 ▼ SELL
+               <button onClick={()=>execTrade('sell')} style={{ flex: '1 1 50%', height: 40, background: '#ef5350', border: 'none', color: '#fff', fontWeight: 700, borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap', minWidth: 0, transition: 'all 0.2s' }}>
+                 ▼ {t.sell}
                </button>
              </div>
           </div>
@@ -476,21 +533,21 @@ export default function Dashboard() {
           {/* History Data Table */}
           <div style={{ height: 260, background: '#131722', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', borderBottom: '1px solid #2a2e3b' }}>
-              {[ 
-                { id: 'open', label: `Open Positions (${orders.filter(o=>o.status==='Open').length})` },
-                { id: 'pending', label: 'Pending Orders (0)' },
-                { id: 'closed', label: 'Closed Positions (0)' },
-                { id: 'statements', label: `Statements (${uiTxs.length})` },
-                { id: 'summary', label: `Account Summary (${uiTxs.filter((t:any) => t.status === 'Approved').length})` }
-              ].map(t => (
-                <button 
-                  key={t.id} onClick={()=>setBottomTab(t.id)} 
-                  style={{ 
+              {[
+                { id: 'open', label: `${t.open_positions} (${orders.filter(o=>o.status==='Open').length})` },
+                { id: 'pending', label: `${t.pending_orders} (0)` },
+                { id: 'closed', label: `${t.closed_trades} (${closedOrders.length})` },
+                { id: 'statements', label: `${t.statements} (${uiTxs.length})` },
+                { id: 'summary', label: `${t.account_summary} (${uiTxs.filter((tx:any) => tx.status === 'Approved').length})` }
+              ].map(tab => (
+                <button
+                  key={tab.id} onClick={()=>setBottomTab(tab.id)}
+                  style={{
                     background: 'transparent', border: 'none', padding: '12px 20px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    color: bottomTab === t.id ? '#fff' : '#787b86',
-                    borderBottom: bottomTab === t.id ? '2px solid #FFD700' : '2px solid transparent'
+                    color: bottomTab === tab.id ? '#fff' : '#787b86',
+                    borderBottom: bottomTab === tab.id ? '2px solid #FFD700' : '2px solid transparent'
                   }}>
-                  {t.label}
+                  {tab.label}
                 </button>
               ))}
             </div>
@@ -500,12 +557,12 @@ export default function Dashboard() {
                 <table style={{ width: '100%', fontSize: 11, textAlign: 'left', borderCollapse: 'collapse' }}>
                   <thead style={{ color: '#787b86', borderBottom: '1px solid #1e222d' }}>
                     <tr>
-                      <th style={{ padding: '12px 20px', fontWeight: 600 }}>DATE</th>
-                      <th style={{ fontWeight: 600 }}>TYPE</th>
-                      <th style={{ fontWeight: 600 }}>AMOUNT</th>
-                      <th style={{ fontWeight: 600 }}>METHOD</th>
+                      <th style={{ padding: '12px 20px', fontWeight: 600 }}>{t.date}</th>
+                      <th style={{ fontWeight: 600 }}>{t.type}</th>
+                      <th style={{ fontWeight: 600 }}>{t.amount}</th>
+                      <th style={{ fontWeight: 600 }}>{t.payment_method}</th>
                       <th style={{ fontWeight: 600 }}>REFERENCE</th>
-                      <th style={{ fontWeight: 600, paddingRight: 20, textAlign: 'right' }}>STATUS</th>
+                      <th style={{ fontWeight: 600, paddingRight: 20, textAlign: 'right' }}>{t.status}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -541,7 +598,7 @@ export default function Dashboard() {
               ) : bottomTab === 'open' ? (
                 <table style={{ width: '100%', fontSize: 11, textAlign: 'left', borderCollapse: 'collapse' }}>
                   <thead style={{ color: '#787b86', borderBottom: '1px solid #1e222d' }}>
-                    <tr><th style={{ padding: '12px 20px' }}>ASSET</th><th>DATE</th><th>TYPE</th><th>SIZE (USD)</th><th>ENTRY</th><th>PNL</th><th style={{textAlign: 'right', paddingRight:20}}>ACTION</th></tr>
+                    <tr><th style={{ padding: '12px 20px' }}>{t.asset}</th><th>{t.date}</th><th>{t.type}</th><th>SIZE (USD)</th><th>{t.entry_price}</th><th>{t.profit_loss}</th><th style={{textAlign: 'right', paddingRight:20}}>{t.actions}</th></tr>
                   </thead>
                   <tbody>
                     {orders.filter(o=>o.status==='Open').map(o => {
@@ -568,6 +625,63 @@ export default function Dashboard() {
                     {orders.filter(o=>o.status==='Open').length === 0 && <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#787b86' }}>No open positions.</td></tr>}
                   </tbody>
                 </table>
+              ) : bottomTab === 'closed' ? (
+                <table style={{ width: '100%', fontSize: 11, textAlign: 'left', borderCollapse: 'collapse' }}>
+                  <thead style={{ color: '#787b86', borderBottom: '1px solid #1e222d' }}>
+                    <tr>
+                      <th style={{ padding: '12px 20px', fontWeight: 600 }}>{t.asset}</th>
+                      <th style={{ fontWeight: 600 }}>{t.date}</th>
+                      <th style={{ fontWeight: 600 }}>{t.type}</th>
+                      <th style={{ fontWeight: 600 }}>SIZE (USD)</th>
+                      <th style={{ fontWeight: 600 }}>{t.entry_price}</th>
+                      <th style={{ fontWeight: 600 }}>EXIT PRICE</th>
+                      <th style={{ fontWeight: 600, paddingRight: 20, textAlign: 'right' }}>{t.profit_loss}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {closedOrders.map(o => (
+                      <tr key={o.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                        <td style={{ padding: '12px 20px', color: '#fff', fontWeight: 600 }}>{o.label}</td>
+                        <td style={{ color: '#787b86', fontSize: 10 }}>
+                          {new Date(o.closed_at || o.created_at || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td style={{ color: o.type==='Buy' ? '#26a69a' : '#ef5350' }}>{o.type.toUpperCase()}</td>
+                        <td style={{ color: '#fff' }}>${o.amountUSD.toFixed(2)}</td>
+                        <td style={{ color: '#787b86' }}>{fmtPrice(o.entryPrice)}</td>
+                        <td style={{ color: '#787b86' }}>{o.exitPrice ? fmtPrice(o.exitPrice) : '—'}</td>
+                        <td style={{ paddingRight: 20, textAlign: 'right', color: o.pnl >= 0 ? '#26a69a' : '#ef5350', fontWeight: 700 }}>
+                          {o.pnl >= 0 ? '+' : ''}{o.pnl.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                    {closedOrders.length === 0 && <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#787b86' }}>No closed trades.</td></tr>}
+                  </tbody>
+                </table>
+              ) : bottomTab === 'summary' ? (
+                (() => {
+                  const totalDeposits = uiTxs.filter((tx:any) => tx.type==='DEPOSIT' && tx.status==='Approved').reduce((s:number, tx:any) => s + tx.amount, 0)
+                  const totalWithdrawals = uiTxs.filter((tx:any) => tx.type==='WITHDRAWAL' && tx.status==='Approved').reduce((s:number, tx:any) => s + tx.amount, 0)
+                  const totalPnL = closedOrders.reduce((s, o) => s + o.pnl, 0)
+                  const stats = [
+                    { label: 'Balance', value: `$${Number(wal?.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#FFD700' },
+                    { label: 'Total Deposits', value: `+$${totalDeposits.toFixed(2)}`, color: '#26a69a' },
+                    { label: 'Total Withdrawals', value: `-$${totalWithdrawals.toFixed(2)}`, color: '#ef5350' },
+                    { label: 'Closed P&L', value: `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)}`, color: totalPnL >= 0 ? '#26a69a' : '#ef5350' },
+                    { label: 'Open Positions', value: String(orders.filter(o => o.status==='Open').length), color: '#fff' },
+                    { label: 'Closed Trades', value: String(closedOrders.length), color: '#fff' },
+                    { label: 'Total Transactions', value: String(uiTxs.length), color: '#fff' },
+                  ]
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: '#1e222d' }}>
+                      {stats.map(s => (
+                        <div key={s.label} style={{ background: '#131722', padding: '16px 20px' }}>
+                          <div style={{ fontSize: 10, color: '#787b86', fontWeight: 600, letterSpacing: '0.05em', marginBottom: 6 }}>{s.label.toUpperCase()}</div>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: s.color }}>{s.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()
               ) : (
                 <div style={{ padding: 40, textAlign: 'center', color: '#787b86', fontSize: 12 }}>No records found.</div>
               )}

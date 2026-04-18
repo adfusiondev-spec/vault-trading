@@ -34,7 +34,8 @@ export async function POST(request: NextRequest) {
     proof_url = filePath
   }
 
-  // التحقق من الرصيد للسحب
+  // Pre-check for UX only — authoritative enforcement is in
+  // handle_transaction_approval() DB trigger with FOR UPDATE lock.
   if (type === 'withdrawal') {
     const { data: wallet } = await supabase
       .from('wallets')

@@ -1,18 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Crown, Building2, Globe, Database, LogOut, ShieldCheck, ShieldAlert, Check, Plus, DollarSign, AlertTriangle, Key, X, Settings2, Settings, Power, Play, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { FinancialDesk } from '@/components/admin/FinancialDesk'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Bell } from 'lucide-react'
 import PaymentSettingsPanel from '@/components/admin/PaymentSettingsPanel'
+import { useTranslation } from '@/lib/i18n'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 
 
 export default function SuperAdminDashboard() {
   const router = useRouter()
+  const { t } = useTranslation()
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'tenants' | 'system' | 'audit' | 'financial'>('tenants')
   // Auth State
@@ -22,6 +25,7 @@ export default function SuperAdminDashboard() {
 
   // Tenants & Modal State
   const [companies, setCompanies] = useState<any[]>([])
+  const [clientCounts, setClientCounts] = useState<Record<string, number>>({})
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTenant, setEditingTenant] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
@@ -35,10 +39,13 @@ export default function SuperAdminDashboard() {
     adminEmail: '',
     adminPassword: '',
     markets: { crypto: false, saudi: false, forex: false, energy: false },
+    market_access: [] as string[],
     billingCycle: 'Monthly' as 'Monthly' | 'Annual',
     subscriptionPackage: 'trial',
     expiresAt: ''
   })
+
+  const ASSET_CLASSES = ['Crypto', 'Forex', 'Commodities', 'Global Indices', 'Saudi Indices'] as const
 
   useEffect(() => {
     setMounted(true)
@@ -94,6 +101,16 @@ export default function SuperAdminDashboard() {
       
       if (data && !error) {
         setCompanies(data)
+        const counts: Record<string, number> = {}
+        await Promise.all(data.map(async (c: any) => {
+          const { count } = await supabase
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('assigned_to', c.id)
+            .eq('role', 'trader')
+          counts[c.id] = count || 0
+        }))
+        setClientCounts(counts)
       }
     }
 
@@ -113,23 +130,31 @@ export default function SuperAdminDashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem('vault_user_email')
     localStorage.removeItem('vault_user_role')
     localStorage.removeItem('vault_impersonated_tenant_id')
     localStorage.removeItem('vault_tenant_markets')
     localStorage.removeItem('vault_tenant_verification')
-    
-    // Fire and forget
-    const supabase = createClient()
-    supabase.auth.signOut().catch(() => {})
-    
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+    } catch {}
     window.location.href = '/login'
   }
 
   const handleMarketToggle = (tenantId: string, marketKey: string) => {}
   const handleVerificationToggle = (tenantId: string) => {}
-  const handleToggleStatus = (tenantId: string) => {}
+  const handleToggleStatus = async (tenantId: string) => {
+    const tenant = companies.find((c: any) => c.id === tenantId)
+    if (!tenant) return
+    const newBanned = !tenant.is_banned
+    if (!confirm(`${newBanned ? 'Deactivate' : 'Activate'} this tenant? ${newBanned ? 'They will be unable to log in.' : 'They will regain access.'}`)) return
+    const supabase = createClient()
+    const { error } = await (supabase.from('profiles') as any).update({ is_banned: newBanned }).eq('id', tenantId)
+    if (error) { alert('Failed: ' + error.message); return }
+    setCompanies(prev => prev.map((c: any) => c.id === tenantId ? { ...c, is_banned: newBanned } : c))
+  }
 
   const handleDeleteCompany = async (tenantId: string) => {
     // If not in confirmation state, switch to it
@@ -179,6 +204,8 @@ export default function SuperAdminDashboard() {
 
 
 
+  const handleDeleteTenant = handleDeleteCompany
+
   const { notifications, unreadCount, markAsRead } = useNotifications(adminId || '', 'super_admin')
   const [showNotifications, setShowNotifications] = useState(false)
 
@@ -186,12 +213,13 @@ export default function SuperAdminDashboard() {
   const handleOpenAddCompany = () => {
     setEditingTenant(null)
     setFormData({
-      id: crypto.randomUUID(), // Guarantee uniqueness
+      id: crypto.randomUUID(),
       company: '',
       slug: '',
       adminEmail: '',
       adminPassword: '',
       markets: { crypto: false, saudi: false, forex: false, energy: false },
+      market_access: [],
       billingCycle: 'Monthly',
       subscriptionPackage: 'trial',
       expiresAt: ''
@@ -203,43 +231,51 @@ export default function SuperAdminDashboard() {
 
   const handleSaveCompany = async () => {
     if (!formData.company || !formData.adminEmail) return alert('Please fill in required fields.')
-    
-    // Calculate expiration
-    let computeExpires = formData.expiresAt
-    if (!editingTenant || (editingTenant && new Date(formData.expiresAt) < new Date())) {
-       const days = formData.trialMode ? formData.trialDays : (formData.billingCycle === 'Annual' ? 365 : 30)
-       computeExpires = new Date(Date.now() + 86400000 * days).toISOString()
-    }
+    const supabase = createClient()
 
     if (editingTenant) {
-      // Local state mutation removed for real-time sync.
+      // ── UPDATE EXISTING TENANT ──
+      const { error } = await (supabase.from('profiles') as any).update({
+        full_name: formData.company,
+        company_slug: formData.slug,
+        subscription_package: formData.subscriptionPackage,
+        market_access: formData.market_access,
+      }).eq('id', editingTenant)
+
+      if (error) { alert('Update failed: ' + error.message); return }
+
+      setCompanies(prev => prev.map((c: any) =>
+        c.id === editingTenant
+          ? { ...c, full_name: formData.company, company_slug: formData.slug, subscription_package: formData.subscriptionPackage, market_access: formData.market_access }
+          : c
+      ))
+      alert('Tenant updated successfully.')
     } else {
+      // ── CREATE NEW TENANT ──
       const response = await fetch('/api/create-tenant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: formData.adminEmail,
           password: formData.adminPassword || 'vaultdefault123!',
-          full_name: 'Admin - ' + formData.company,
+          full_name: formData.company,
           company_name: formData.company,
           slug: formData.slug
         })
       })
-      
       const result = await response.json()
-      
-      if (!response.ok) {
-        alert(result.error || 'Failed to create tenant.')
-        return
+      if (!response.ok) { alert(result.error || 'Failed to create tenant.'); return }
+
+      // Patch with package + markets using the real user_id from API
+      if (result.user_id) {
+        await (supabase.from('profiles') as any).update({
+          subscription_package: formData.subscriptionPackage,
+          market_access: formData.market_access,
+        }).eq('id', result.user_id)
       }
 
-      // Local mock injection removed for real-time sync.
+      alert('Tenant created successfully.')
     }
-
-    const adminClient = createClient()
-    await adminClient.from('profiles')
-      .update({ subscription_package: formData.subscriptionPackage })
-      .eq('id', editingTenant || formData.id)
 
     setIsModalOpen(false)
   }
@@ -259,7 +295,7 @@ export default function SuperAdminDashboard() {
         justifyContent: 'center', alignItems: 'center', background: '#0b0e11', color: '#fff'
       }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,215,0,0.1)', borderTopColor: '#FFD700', animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: 16, fontSize: 11, letterSpacing: '0.2em', color: '#8a8e9b', fontWeight: 600 }}>AUTHENTICATING...</p>
+        <p style={{ marginTop: 16, fontSize: 11, letterSpacing: '0.2em', color: '#8a8e9b', fontWeight: 600 }}>{t.authenticating}</p>
         <style dangerouslySetInnerHTML={{ __html: '@keyframes spin { to { transform: rotate(360deg); } }' }} />
       </div>
     )
@@ -326,8 +362,9 @@ export default function SuperAdminDashboard() {
             border: 'none', color: '#c0c3ce', padding: '6px 12px',
             borderRadius: 6, cursor: 'pointer', fontSize: 12, transition: 'all 0.2s', ...({ ':hover': { color: '#fff' } } as any)
           }}>
-            <LogOut size={14} /> LOGOUT
+            <LogOut size={14} /> {t.logout}
           </button>
+          <LanguageToggle />
         </div>
       </div>
 
@@ -335,14 +372,14 @@ export default function SuperAdminDashboard() {
         
         {/* ── Sidebar CRM Navigation ── */}
         <div style={{
-          width: 320, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',
+          width: 200, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',
           display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px'
         }}>
           {[
-            { id: 'tenants', icon: Building2, label: 'Leasing Companies' },
+            { id: 'tenants', icon: Building2, label: t.leasing_companies },
             { id: 'system', icon: Database, label: 'Global Architecture' },
             { id: 'financial', icon: DollarSign, label: 'Subscription Payments' },
-            { id: 'payment-settings', icon: Settings, label: 'Global Payment Settings' },
+            { id: 'payment-settings', icon: Settings, label: t.payment_settings },
             { id: 'audit', icon: ShieldCheck, label: 'Security & Audit Logs' },
           ].map(item => {
             const Icon = item.icon
@@ -398,7 +435,7 @@ export default function SuperAdminDashboard() {
                         boxShadow: '0 4px 15px rgba(255,215,0,0.3)', transition: 'transform 0.2s'
                       }}
                     >
-                      <Plus size={18} /> ADD NEW COMPANY
+                      <Plus size={18} /> {t.add_new_tenant}
                     </button>
                   </div>
                 </div>
@@ -407,73 +444,61 @@ export default function SuperAdminDashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead style={{ background: 'rgba(0,0,0,0.3)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                       <tr>
-                        <th style={{ padding: '16px 20px', fontWeight: 600 }}>COMPANY NAME</th>
-                        <th style={{ padding: '16px 20px', fontWeight: 600 }}>SUB-ADMIN EMAIL</th>
-                        <th style={{ padding: '16px 20px', fontWeight: 600 }}>CLIENTS</th>
-                        <th style={{ padding: '16px 20px', fontWeight: 600 }}>STATUS</th>
-                        <th style={{ padding: '16px 20px', fontWeight: 600 }}>KYC VERIFICATION</th>
-                        <th style={{ padding: '16px 20px', fontWeight: 600 }}>ACCESS CONTROL & MARKETS</th>
-                        <th style={{ padding: '16px 20px', fontWeight: 600 }}>BILLING CYCLE</th>
-                        <th style={{ padding: '16px 20px', fontWeight: 600, textAlign: 'right' }}>ACTIONS</th>
+                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>COMPANY NAME</th>
+                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>{t.email_address}</th>
+                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>{t.total_clients}</th>
+                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>MARKETS</th>
+                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>{t.package}</th>
+                        <th style={{ padding: '14px 20px', fontWeight: 600, textAlign: 'right' }}>{t.actions}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {companies.map(company => {
-                        const isVerified = true // Fallback dummy data for UI display
-                        const markets = { crypto: true, saudi: true, forex: true, energy: true } // Fallback
                         return (
                         <tr key={company.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <td style={{ padding: '16px 20px' }}>
-                            <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>{company.full_name}</div>
-                            <div style={{ color: '#8a8e9b', fontFamily: 'monospace', fontSize: 11, marginTop: 4 }}>ID: {company.id}</div>
+                          <td style={{ padding: '14px 20px' }}>
+                            <div style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{company.full_name}</div>
+                            <div style={{ color: '#555', fontFamily: 'monospace', fontSize: 10, marginTop: 2 }}>/{company.company_slug || company.id?.slice(0,8)}</div>
                           </td>
-                          <td style={{ padding: '16px 20px', fontWeight: 500, color: '#c0c3ce' }}>{company.email}</td>
-                          <td style={{ padding: '16px 20px', fontFamily: 'monospace', fontSize: 15 }}>—</td>
-                          
-                          <td style={{ padding: '16px 20px' }}>
-                            <span style={{ 
-                              display: 'inline-flex', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                              background: 'rgba(38,166,154,0.1)',
-                              color: '#26a69a', border: `1px solid #26a69a`
-                            }}>
-                              {company.subscription_package || 'Standard'}
-                            </span>
+                          <td style={{ padding: '14px 20px', fontWeight: 500, color: '#c0c3ce', fontSize: 12 }}>{company.email}</td>
+                          <td style={{ padding: '14px 20px', fontFamily: 'monospace', fontWeight: 700, color: '#fff', fontSize: 14 }}>
+                            {clientCounts[company.id] ?? '—'}
                           </td>
 
-                          <td style={{ padding: '16px 20px' }}>
-                            <button 
-                              onClick={() => handleVerificationToggle(company.id)}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 6,
-                                background: isVerified ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)',
-                                border: `1px solid ${isVerified ? '#26a69a' : '#ef5350'}`,
-                                color: isVerified ? '#26a69a' : '#ef5350',
-                                fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
-                              }}
-                            >
-                              {isVerified ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
-                              {isVerified ? 'VERIFIED' : 'UNVERIFIED'}
-                            </button>
-                          </td>
-                          
-                          <td style={{ padding: '16px 20px' }}>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              <MarketToggle label="Crypto" active={markets.crypto} onToggle={() => handleMarketToggle(company.id, 'crypto')} />
-                              <MarketToggle label="Saudi Stocks" active={markets.saudi} onToggle={() => handleMarketToggle(company.id, 'saudi')} />
-                              <MarketToggle label="Forex" active={markets.forex} onToggle={() => handleMarketToggle(company.id, 'forex')} />
-                              <MarketToggle label="Energy" active={markets.energy} onToggle={() => handleMarketToggle(company.id, 'energy')} />
-                            </div>
-                          </td>
-                          <td style={{ 
-                            padding: '16px 20px', 
-                            fontWeight: 700, 
-                            color: '#FFD700',
-                            textShadow: '0 0 8px rgba(255,215,0,0.5)'
-                          }}>
-                            {new Date(company.created_at).toLocaleDateString()}
+                          <td style={{ padding: '14px 20px' }}>
+                            {(company.market_access || []).length > 0 ? (
+                              <span
+                                title={(company.market_access || []).join(', ')}
+                                style={{ color: '#FFD700', fontSize: 12, fontWeight: 600, cursor: 'help' }}
+                              >
+                                {(company.market_access || []).length} markets
+                              </span>
+                            ) : (
+                              <span style={{ color: '#555', fontSize: 11 }}>None</span>
+                            )}
                           </td>
 
-                          <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                          <td style={{ padding: '14px 20px' }}>
+                            {(() => {
+                              const raw = (company.subscription_package || 'standard').toLowerCase()
+                              const isVip = raw.includes('vip')
+                              const isTrial = raw.includes('trial')
+                              const label = isVip ? 'VIP' : isTrial ? 'Trial' : 'Standard'
+                              return (
+                                <span style={{
+                                  display: 'inline-block',
+                                  background: isVip ? '#22c55e' : isTrial ? '#6b7280' : '#FFD700',
+                                  color: isVip || isTrial ? '#fff' : '#000',
+                                  borderRadius: 4, padding: '3px 10px',
+                                  fontSize: 11, fontWeight: 700, letterSpacing: '0.3px'
+                                }}>
+                                  {label}
+                                </span>
+                              )
+                            })()}
+                          </td>
+
+                          <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                               <button onClick={() => {
                                 setEditingTenant(company.id)
@@ -484,6 +509,7 @@ export default function SuperAdminDashboard() {
                                   adminEmail: company.email || '',
                                   adminPassword: '',
                                   markets: { crypto: false, saudi: false, forex: false, energy: false },
+                                  market_access: company.market_access || [],
                                   billingCycle: 'Monthly',
                                   subscriptionPackage: company.subscription_package || 'trial',
                                   expiresAt: ''
@@ -497,30 +523,13 @@ export default function SuperAdminDashboard() {
                               }}>
                                 <Settings2 size={13} /> MANAGE
                               </button>
-                              <button onClick={() => handleToggleStatus(company.id)} style={{
+                              <button onClick={() => handleToggleStatus(company.id)} title={company.is_banned ? 'Activate Tenant' : 'Deactivate Tenant'} style={{
                                 display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, height: 32,
-                                background: 'transparent',
-                                border: `1px solid rgba(239,83,80,0.3)`,
-                                color: '#ef5350', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                                background: company.is_banned ? 'rgba(38,166,154,0.1)' : 'transparent',
+                                border: `1px solid ${company.is_banned ? '#26a69a' : 'rgba(239,83,80,0.3)'}`,
+                                color: company.is_banned ? '#26a69a' : '#ef5350', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
                               }}>
                                 <Power size={13} />
-                              </button>
-                              <button 
-                                onClick={async () => {
-                                  try {
-                                    localStorage.setItem('vault_impersonated_tenant_id', company.id)
-                                    window.location.href = `/sub-admin/${company.company_slug}`
-                                  } catch (e) {
-                                    alert('Navigation Error: ' + e)
-                                  }
-                                }} 
-                                style={{
-                                  display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, height: 32,
-                                  background: '#FFD700', border: 'none',
-                                  color: '#000', fontSize: 11, fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s'
-                                }}
-                              >
-                                <Play size={13} fill="#000" /> ENTER
                               </button>
                               <button 
                                 onClick={() => {
@@ -632,14 +641,30 @@ export default function SuperAdminDashboard() {
               </div>
 
               <div>
-                <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>MARKET ACCESS</label>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: '10px 14px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
-                  {['crypto', 'saudi', 'forex', 'energy'].map(m => (
-                    <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: formData.markets[m as keyof typeof formData.markets] ? '#FFD700' : '#c0c3ce', cursor: 'pointer', fontWeight: 500 }}>
-                      <input type="checkbox" checked={formData.markets[m as keyof typeof formData.markets]} onChange={e => setFormData({...formData, markets: {...formData.markets, [m]: e.target.checked}})} style={{ cursor: 'pointer' }} />
-                      <span style={{ textTransform: 'capitalize' }}>{m}</span>
-                    </label>
-                  ))}
+                <label style={{ display: 'block', color: '#FFD700', fontSize: 11, fontWeight: 700, marginBottom: 8, letterSpacing: '0.05em' }}>MARKET ACCESS CONTROL</label>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: '12px 14px', borderRadius: 6, border: '1px solid rgba(255,215,0,0.15)' }}>
+                  {ASSET_CLASSES.map(asset => {
+                    const isChecked = (formData.market_access || []).includes(asset)
+                    return (
+                      <label key={asset} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: isChecked ? '#FFD700' : '#c0c3ce', cursor: 'pointer', fontWeight: isChecked ? 600 : 400 }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={e => {
+                            const current = formData.market_access || []
+                            setFormData({
+                              ...formData,
+                              market_access: e.target.checked
+                                ? [...current, asset]
+                                : current.filter((a: string) => a !== asset)
+                            })
+                          }}
+                          style={{ accentColor: '#FFD700', width: 15, height: 15, cursor: 'pointer' }}
+                        />
+                        {asset}
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -658,11 +683,14 @@ export default function SuperAdminDashboard() {
                     onChange={(e) => setFormData({...formData, subscriptionPackage: e.target.value})}
                     style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', cursor: 'pointer' }}
                   >
-                    <option value="trial" style={{ color: '#000' }}>TRIAL (14 days)</option>
-                    <option value="monthly_standard" style={{ color: '#000' }}>Monthly Standard</option>
-                    <option value="annual_standard" style={{ color: '#000' }}>Annual Standard</option>
-                    <option value="monthly_vip" style={{ color: '#000' }}>Monthly VIP</option>
-                    <option value="annual_vip" style={{ color: '#000' }}>Annual VIP</option>
+                    <option value="Trial_1day" style={{ color: '#000' }}>Trial — 1 Day</option>
+                    <option value="Trial_3days" style={{ color: '#000' }}>Trial — 3 Days</option>
+                    <option value="Trial_7days" style={{ color: '#000' }}>Trial — 7 Days</option>
+                    <option value="trial" style={{ color: '#000' }}>Trial — 14 Days</option>
+                    <option value="Standard" style={{ color: '#000' }}>Standard — Monthly</option>
+                    <option value="VIP" style={{ color: '#000' }}>VIP — Monthly</option>
+                    <option value="annual_standard" style={{ color: '#000' }}>Standard — Annual</option>
+                    <option value="annual_vip" style={{ color: '#000' }}>VIP — Annual</option>
                   </select>
                 </div>
               </div>
@@ -676,7 +704,7 @@ export default function SuperAdminDashboard() {
               ) : <div/>}
 
               <button onClick={handleSaveCompany} style={{ padding: '10px 24px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 6, fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.2s' }}>
-                {editingTenant ? 'SAVE CHANGES' : 'CREATE COMPANY'}
+                {editingTenant ? t.save_changes : t.add_new_tenant}
               </button>
             </div>
 

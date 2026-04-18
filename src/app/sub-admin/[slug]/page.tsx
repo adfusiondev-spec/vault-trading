@@ -1,21 +1,45 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Activity, DollarSign, LogOut, ShieldCheck, AlertCircle, Check, X, Bell, Eye, Settings } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
+import { Users, Activity, DollarSign, LogOut, ShieldCheck, AlertCircle, Check, X, Bell, Eye, Settings, CreditCard } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { usePendingTransactions } from '@/hooks/usePendingTransactions'
 import { useMarketData } from '@/hooks/useMarketData'
 
 import { useNotifications } from '@/hooks/useNotifications'
+import { useTranslation } from '@/lib/i18n'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 // Mock Data
 const INITIAL_TRADES: any[] = []
 const INITIAL_FINANCIALS: any[] = []
 const INITIAL_LEADS: any[] = []
 
+const SUBSCRIPTION_PACKAGES = {
+  starter: { label: 'Starter', monthly: 99.00, yearly: 950.00 },
+  pro:     { label: 'Pro',     monthly: 199.00, yearly: 1900.00 },
+  vip:     { label: 'VIP',    monthly: 399.00, yearly: 3800.00 },
+} as const
+
+const TRIAL_OPTIONS = [
+  { value: 'none',       label: 'None',         days: 0 },
+  { value: 'trial_1day', label: 'Trial 1 day',  days: 1 },
+  { value: 'trial_3days',label: 'Trial 3 days', days: 3 },
+  { value: 'trial_7days',label: 'Trial 7 days', days: 7 },
+] as const
+
+const BILLING_CYCLES = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly',  label: 'Yearly'  },
+] as const
+
+type PackageKey     = keyof typeof SUBSCRIPTION_PACKAGES
+type BillingCycle   = 'monthly' | 'yearly'
+
 export default function SubAdminDashboard({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { slug } = React.use(params)
   const { prices } = useMarketData()
 
@@ -28,7 +52,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   }
 
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'financial' | 'payment-settings'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'financial' | 'subscription' | 'payment-settings'>('monitor')
+  const [subscriptionPayments, setSubscriptionPayments] = useState<any[]>([])
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
@@ -36,7 +61,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   // State
   const [trades, setTrades] = useState(INITIAL_TRADES)
-  const { pending, reviewTransaction, getProofUrl } = usePendingTransactions()
+  const { pending, allTransactions, reviewTransaction, getProofUrl } = usePendingTransactions()
   const [traders, setTraders] = useState<any[]>([])
   const [isTraderModalOpen, setIsTraderModalOpen] = useState(false)
   const [creatingTrader, setCreatingTrader] = useState(false)
@@ -48,16 +73,47 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     country: ''
   })
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [leadStatuses, setLeadStatuses] = useState<Record<string, string>>({})
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set())
 
   // Notifications
   const [showNotifications, setShowNotifications] = useState(false)
+
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredClients = useMemo(
+    () =>
+      traders.filter((client: any) => {
+        const query = searchQuery.toLowerCase()
+        return (
+          client.full_name?.toLowerCase().includes(query) ||
+          client.email?.toLowerCase().includes(query) ||
+          client.phone_number?.toLowerCase().includes(query)
+        )
+      }),
+    [traders, searchQuery]
+  )
 
   // Subscription Payment Modal
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('')
   const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
+  const [selectedPackage, setSelectedPackage] = useState<PackageKey>('pro')
+  const [trialOption, setTrialOption] = useState('none')
+
+  useEffect(() => {
+    if (trialOption !== 'none') {
+      setPaymentAmount('0.00')
+      return
+    }
+    const price = billingCycle === 'monthly'
+      ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly
+      : SUBSCRIPTION_PACKAGES[selectedPackage].yearly
+    setPaymentAmount(price.toFixed(2))
+  }, [billingCycle, selectedPackage, trialOption])
 
   useEffect(() => {
     setMounted(true)
@@ -168,8 +224,13 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         if (traderData) {
           setTraders(traderData)
           const initialNotes: Record<string, string> = {}
-          traderData.forEach(t => { if (t.notes) initialNotes[t.id] = t.notes })
+          const initialStatuses: Record<string, string> = {}
+          traderData.forEach((t: any) => {
+            if (t.notes) initialNotes[t.id] = t.notes
+            initialStatuses[t.id] = t.lead_status || 'Active'
+          })
           setNotes(prev => ({ ...initialNotes, ...prev }))
+          setLeadStatuses(prev => ({ ...initialStatuses, ...prev }))
         }
 
         const traderIds: string[] = (traderData || []).map((t: any) => t.id)
@@ -191,6 +252,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
           if (oData) {
             const formattedTrades = oData.map((o: any) => ({
               id: o.id,
+              userId: o.user_id,
               userEmail: o.profiles?.email || o.user_id,
               userName: o.profiles?.full_name || o.profiles?.email || 'Unknown',
               asset: o.symbol,
@@ -205,6 +267,15 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
           // No traders yet, clear lists
           setTrades([])
         }
+
+        // ── Step 4: Fetch Subscription Payments for this sub-admin ──
+        const { data: subPayments } = await supabase
+          .from('subscription_payments')
+          .select('*')
+          .eq('sub_admin_id', adminId)
+          .order('created_at', { ascending: false })
+        if (subPayments) setSubscriptionPayments(subPayments)
+
       } catch (e) {
         console.error('Sync failed', e)
       }
@@ -224,38 +295,70 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   const { notifications, unreadCount, markAsRead } = useNotifications(companyProfile?.id || '', 'sub_admin')
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem('vault_user_email')
     localStorage.removeItem('vault_user_role')
     localStorage.removeItem('vault_impersonated_tenant_id')
     localStorage.removeItem('vault_tenant_markets')
     localStorage.removeItem('vault_tenant_verification')
-    
-    // Fire and forget
-    const supabase = createClient()
-    supabase.auth.signOut().catch(() => {})
-    
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+    } catch {}
     window.location.href = '/login'
   }
 
   const handleSubscriptionPayment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!paymentAmount || !paymentMethod) return alert('Please enter amount and method')
+    if (!paymentMethod) return alert('Please select a payment method')
     if (!companyProfile?.id) return alert('Error identifying company profile')
-    
+
     setPaymentLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.from('subscription_payments').insert([
-      { sub_admin_id: companyProfile.id, amount: parseFloat(paymentAmount), method: paymentMethod, status: 'Pending', reference: `SUB-${Date.now()}` }
-    ])
-    setPaymentLoading(false)
-    if (error) {
-      alert('Error submitting payment: ' + error.message)
-    } else {
-      alert('Subscription payment submitted successfully!')
+    try {
+      let proofPath: string | null = null
+      if (paymentProofFile) {
+        const ext = paymentProofFile.name.split('.').pop()
+        const fileName = `${companyProfile.id}/${Date.now()}.${ext}`
+        const { error: uploadErr } = await supabase.storage.from('payment-proofs').upload(fileName, paymentProofFile)
+        if (uploadErr) throw new Error('Proof upload failed: ' + uploadErr.message)
+        proofPath = fileName
+      }
+      const payableAmount = trialOption !== 'none' ? 0 : parseFloat(paymentAmount)
+      const fullPrice = billingCycle === 'monthly'
+        ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly
+        : SUBSCRIPTION_PACKAGES[selectedPackage].yearly
+      const trialDays = TRIAL_OPTIONS.find(t => t.value === trialOption)?.days ?? 0
+
+      const { error } = await (supabase.from('subscription_payments') as any).insert([{
+        sub_admin_id: companyProfile.id,
+        amount: payableAmount,
+        method: paymentMethod,
+        status: 'Pending',
+        reference: `SUB-${Date.now()}`,
+        proof_url: proofPath,
+        package: selectedPackage,
+        billing_cycle: billingCycle,
+        trial_option: trialOption,
+        trial_days: trialDays,
+        full_amount: fullPrice,
+      }])
+      if (error) throw error
+      const msg = trialOption !== 'none'
+        ? `Trial period (${TRIAL_OPTIONS.find(t => t.value === trialOption)?.label}) request submitted!`
+        : 'Subscription payment submitted successfully!'
+      alert(msg)
       setIsPaymentModalOpen(false)
       setPaymentAmount('')
       setPaymentMethod('')
+      setPaymentProofFile(null)
+      setBillingCycle('monthly')
+      setSelectedPackage('pro')
+      setTrialOption('none')
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setPaymentLoading(false)
     }
   }
 
@@ -304,6 +407,12 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     }
   }
 
+  const handleLeadStatusChange = async (traderId: string, newStatus: string) => {
+    setLeadStatuses(prev => ({ ...prev, [traderId]: newStatus }))
+    const supabase = createClient()
+    await (supabase.from('profiles') as any).update({ lead_status: newStatus }).eq('id', traderId)
+  }
+
   const handleCreateTrader = async (e: React.FormEvent) => {
     e.preventDefault()
     setCreatingTrader(true)
@@ -327,11 +436,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
       
       const result = await response.json()
       if (response.ok) {
-        // Save plain_password to localStorage as a fallback (DB also stores it via API)
         const traderId = result.trader?.id
-        if (traderId) {
-          try { localStorage.setItem(`vault_pw_${traderId}`, traderForm.password) } catch {}
-        }
         setIsTraderModalOpen(false)
         setTraderForm({ fullName: '', email: '', password: '', phone: '', country: '' })
         alert('Trader created successfully!')
@@ -352,7 +457,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         justifyContent: 'center', alignItems: 'center', background: '#0b0e11', color: '#fff'
       }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,215,0,0.1)', borderTopColor: '#FFD700', animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: 16, fontSize: 11, letterSpacing: '0.2em', color: '#8a8e9b', fontWeight: 600 }}>AUTHENTICATING...</p>
+        <p style={{ marginTop: 16, fontSize: 11, letterSpacing: '0.2em', color: '#8a8e9b', fontWeight: 600 }}>{t.authenticating}</p>
         <style dangerouslySetInnerHTML={{ __html: '@keyframes spin { to { transform: rotate(360deg); } }' }} />
       </div>
     )
@@ -419,7 +524,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             border: 'none', color: '#000', padding: '6px 16px',
             borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all 0.2s'
           }}>
-            <DollarSign size={14} /> PAY SUBSCRIPTION
+            <DollarSign size={14} /> {t.subscription}
           </button>
 
           <button onClick={handleLogout} style={{
@@ -427,8 +532,9 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             border: '1px solid rgba(255,255,255,0.1)', color: '#c0c3ce', padding: '6px 12px',
             borderRadius: 6, cursor: 'pointer', fontSize: 12, transition: 'all 0.2s', ...({ ':hover': { borderColor: '#fff', color: '#fff' } } as any)
           }}>
-            <LogOut size={14} /> LOGOUT
+            <LogOut size={14} /> {t.logout}
           </button>
+          <LanguageToggle />
         </div>
       </div>
 
@@ -440,9 +546,10 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
           display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px'
         }}>
           {[
-            { id: 'monitor', icon: Activity, label: 'Live Trade Monitor' },
-            { id: 'leads', icon: Users, label: 'Sales & Leads Tracker' },
-            { id: 'financial', icon: DollarSign, label: 'Financial Desk' },
+            { id: 'monitor', icon: Activity, label: t.trade_monitor },
+            { id: 'leads', icon: Users, label: t.clients },
+            { id: 'financial', icon: DollarSign, label: t.financial_desk },
+            { id: 'subscription', icon: CreditCard, label: 'Subscription' },
           ].map(item => {
             const Icon = item.icon
             const isActive = activeTab === item.id
@@ -487,11 +594,11 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead style={{ background: 'rgba(0,0,0,0.2)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                       <tr>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>CLIENT</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>USER EMAIL</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>ASSET & TYPE</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>AMOUNT</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>PROFIT/LOSS</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.name}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.email}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.asset} & {t.type}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.amount}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>{t.profit_loss}</th>
                         <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>RISK CONTROL</th>
                       </tr>
                     </thead>
@@ -519,7 +626,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                               }}>
                                 <AlertCircle size={12} strokeWidth={3} /> EMERGENCY CLOSE
                               </button>
-                              <button onClick={() => router.push(`/sub-admin/${slug}/client/${trade.userEmail.replace(/[^a-zA-Z0-9]/g, '_')}`)} style={{
+                              <button onClick={() => router.push(`/sub-admin/${slug}/client/${trade.userId}`)} style={{
                                 padding: '5px 10px', background: 'transparent', border: '1px solid #FFD700', borderRadius: 4,
                                 color: '#FFD700', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
                               }}>
@@ -548,8 +655,22 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                     onClick={() => setIsTraderModalOpen(true)}
                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 18px', borderRadius: 6, background: '#FFD700', border: 'none', color: '#000', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                   >
-                    <Users size={16} strokeWidth={2.5} /> ADD NEW CLIENT
+                    <Users size={16} strokeWidth={2.5} /> {t.add_client}
                   </button>
+                </div>
+
+                {/* ── Search Filter ── */}
+                <div style={{ marginBottom: 16 }}>
+                  <input
+                    type="text"
+                    placeholder={t.search + ' by name, email, or phone...'}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      background: '#0a0a0a', border: '1px solid #FFD700', color: '#fff',
+                      borderRadius: 6, padding: '10px 16px', width: 320, outline: 'none', fontSize: 14,
+                    }}
+                  />
                 </div>
 
                 {/* ── Excel-style spreadsheet table ── */}
@@ -557,25 +678,25 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12, minWidth: 980 }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,215,0,0.07)', borderBottom: '2px solid rgba(255,215,0,0.2)' }}>
-                        {['#', 'FULL NAME', 'EMAIL', 'PHONE', 'COUNTRY', 'BALANCE (USD)', 'PASSWORD', 'REG DATE', 'STATUS', 'ACTIONS'].map(col => (
+                        {['#', t.full_name, t.email, t.phone_number, t.country, `${t.balance} (USD)`, 'REG DATE', t.status, t.actions].map(col => (
                           <th key={col} style={{ padding: '13px 14px', fontWeight: 700, color: '#FFD700', fontSize: 10, letterSpacing: '0.08em', whiteSpace: 'nowrap', userSelect: 'none' }}>{col}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {traders.length === 0 ? (
+                      {filteredClients.length === 0 ? (
                         <tr>
-                          <td colSpan={10} style={{ padding: 50, textAlign: 'center', color: '#8a8e9b', background: 'rgba(255,255,255,0.01)' }}>
-                            No clients registered under your account yet.
+                          <td colSpan={9} style={{ padding: 50, textAlign: 'center', color: '#8a8e9b', background: 'rgba(255,255,255,0.01)' }}>
+                            {searchQuery ? 'No clients match your search.' : 'No clients registered under your account yet.'}
                           </td>
                         </tr>
-                      ) : traders.map((trader, i) => {
+                      ) : filteredClients.map((trader, i) => {
                         const balance = Number((trader.wallets as any)?.[0]?.balance || 0)
                         const isVisible = visiblePasswords.has(trader.id)
                         const regDate = trader.created_at ? new Date(trader.created_at).toLocaleDateString('en-GB') : '—'
                         // Password: prefer DB value, fall back to localStorage
                         const localPw = typeof window !== 'undefined' ? localStorage.getItem(`vault_pw_${trader.id}`) : null
-                        const passwordDisplay = trader.plain_password || localPw || '—'
+                        const passwordDisplay = localPw || '—'
                         return (
                           <tr
                             key={trader.id}
@@ -601,30 +722,37 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                             <td style={{ padding: '13px 14px', fontFamily: 'monospace', fontWeight: 700, color: balance > 0 ? '#FFD700' : '#555', whiteSpace: 'nowrap' }}>
                               ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
-                            {/* Password */}
-                            <td style={{ padding: '13px 14px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: 13, color: isVisible ? '#26a69a' : '#555', letterSpacing: isVisible ? '0.04em' : '0.15em', minWidth: 80 }}>
-                                  {isVisible ? passwordDisplay : '••••••••'}
-                                </span>
-                                <button
-                                  onClick={() => togglePassword(trader.id)}
-                                  style={{
-                                    padding: '2px 9px', background: isVisible ? 'rgba(239,83,80,0.12)' : 'rgba(255,255,255,0.06)',
-                                    border: `1px solid ${isVisible ? 'rgba(239,83,80,0.3)' : 'rgba(255,255,255,0.12)'}`,
-                                    borderRadius: 4, color: isVisible ? '#ef5350' : '#8a8e9b',
-                                    fontSize: 9, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '0.05em', transition: 'all 0.15s'
-                                  }}
-                                >
-                                  {isVisible ? 'HIDE' : 'SHOW'}
-                                </button>
-                              </div>
-                            </td>
                             {/* Reg Date */}
                             <td style={{ padding: '13px 14px', color: '#555', fontSize: 11, whiteSpace: 'nowrap' }}>{regDate}</td>
-                            {/* Status */}
+                            {/* Lead Status */}
                             <td style={{ padding: '13px 14px' }}>
-                              <span style={{ display: 'inline-block', padding: '3px 10px', background: 'rgba(38,166,154,0.1)', color: '#26a69a', border: '1px solid rgba(38,166,154,0.25)', borderRadius: 20, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em' }}>ACTIVE</span>
+                              {(() => {
+                                const status = leadStatuses[trader.id] || 'Active'
+                                const colors: Record<string, { bg: string; color: string; border: string }> = {
+                                  'Active':      { bg: 'rgba(38,166,154,0.1)',  color: '#26a69a', border: 'rgba(38,166,154,0.3)' },
+                                  'Hot Lead':    { bg: 'rgba(255,215,0,0.1)',   color: '#FFD700', border: 'rgba(255,215,0,0.3)' },
+                                  'Cold':        { bg: 'rgba(120,123,134,0.1)', color: '#787b86', border: 'rgba(120,123,134,0.3)' },
+                                  'Prospect':    { bg: 'rgba(100,150,255,0.1)', color: '#6496ff', border: 'rgba(100,150,255,0.3)' },
+                                  'Inactive':    { bg: 'rgba(239,83,80,0.1)',   color: '#ef5350', border: 'rgba(239,83,80,0.3)' },
+                                }
+                                const c = colors[status] || colors['Active']
+                                return (
+                                  <select
+                                    value={status}
+                                    onChange={e => handleLeadStatusChange(trader.id, e.target.value)}
+                                    style={{
+                                      background: c.bg, color: c.color, border: `1px solid ${c.border}`,
+                                      borderRadius: 20, padding: '3px 8px', fontSize: 9, fontWeight: 700,
+                                      letterSpacing: '0.06em', outline: 'none', cursor: 'pointer',
+                                      appearance: 'none', textAlign: 'center'
+                                    }}
+                                  >
+                                    {['Active', 'Hot Lead', 'Cold', 'Prospect', 'Inactive'].map(s => (
+                                      <option key={s} value={s} style={{ background: '#1a1e2e', color: '#fff' }}>{s.toUpperCase()}</option>
+                                    ))}
+                                  </select>
+                                )
+                              })()}
                             </td>
                             {/* Actions */}
                             <td style={{ padding: '13px 14px' }}>
@@ -647,25 +775,35 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             {/* ── Financial Desk ── */}
             {activeTab === 'financial' && (
               <div className="crm-section fade-in">
-                <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#FFD700', letterSpacing: '0.05em' }}>PENDING FINANCIAL REQUESTS</h2>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#FFD700', letterSpacing: '0.05em' }}>FINANCIAL REQUESTS</h2>
+                  {pending.length > 0 && (
+                    <span style={{ background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
+                      {pending.length} PENDING
+                    </span>
+                  )}
+                </div>
                 <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead style={{ background: 'rgba(0,0,0,0.2)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                       <tr>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>REQ ID</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>USER EMAIL</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>TYPE</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>AMOUNT</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>RECEIPT</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>ACTION PENDING</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>DATE</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.email}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.type}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.amount}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.proof_of_payment}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>STATUS</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {pending.length === 0 ? (
-                        <tr><td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>All financial requests have been processed.</td></tr>
-                      ) : pending.map((fin: any) => (
-                        <tr key={fin.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#8a8e9b' }}>{fin.id.substring(0,8)}...</td>
+                      {allTransactions.length === 0 ? (
+                        <tr><td colSpan={7} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>No financial requests yet.</td></tr>
+                      ) : allTransactions.map((fin: any) => (
+                        <tr key={fin.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: fin.status !== 'pending' ? 0.7 : 1 }}>
+                          <td style={{ padding: '12px 16px', color: '#8a8e9b', fontSize: 11 }}>
+                            {new Date(fin.created_at).toLocaleDateString('en-GB')}
+                          </td>
                           <td style={{ padding: '12px 16px', fontWeight: 500 }}>{fin.profiles?.email || 'Unknown'}</td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{ padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: fin.type === 'deposit' ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)', color: fin.type === 'deposit' ? '#26a69a' : '#ef5350' }}>{fin.type.toUpperCase()}</span>
@@ -677,26 +815,40 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                                 const url = await getProofUrl(fin.proof_of_payment_url)
                                 if (url) window.open(url, '_blank')
                               }} style={{ background: 'transparent', border: '1px solid #787b86', display: 'flex', alignItems: 'center', gap: 6, color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 10, cursor: 'pointer' }}>
-                                <Eye size={12}/> View Image
+                                <Eye size={12}/> View
                               </button>
                             ) : <span style={{ color: '#555', fontSize: 10 }}>No Receipt</span>}
                           </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{
+                              padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700,
+                              background: fin.status === 'approved' ? 'rgba(38,166,154,0.1)' : fin.status === 'rejected' ? 'rgba(239,83,80,0.1)' : 'rgba(255,215,0,0.1)',
+                              color: fin.status === 'approved' ? '#26a69a' : fin.status === 'rejected' ? '#ef5350' : '#FFD700',
+                              border: `1px solid ${fin.status === 'approved' ? 'rgba(38,166,154,0.3)' : fin.status === 'rejected' ? 'rgba(239,83,80,0.3)' : 'rgba(255,215,0,0.3)'}`
+                            }}>
+                              {fin.status.toUpperCase()}
+                            </span>
+                          </td>
                           <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                              <button onClick={() => handleFinancialAction(fin.id, 'reject')} style={{
-                                width: 32, height: 32, borderRadius: 6, border: '1px solid rgba(239,83,80,0.3)', background: 'rgba(239,83,80,0.1)',
-                                color: '#ef5350', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.15s'
-                              }}>
-                                <X size={16} strokeWidth={2.5} />
-                              </button>
-                              <button onClick={() => handleFinancialAction(fin.id, 'approve')} style={{
-                                display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', borderRadius: 6,
-                                border: '1px solid #26a69a', background: 'rgba(38,166,154,0.15)',
-                                color: '#26a69a', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
-                              }}>
-                                <Check size={16} strokeWidth={2.5} /> APPROVE
-                              </button>
-                            </div>
+                            {fin.status === 'pending' ? (
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                <button onClick={() => handleFinancialAction(fin.id, 'reject')} style={{
+                                  width: 32, height: 32, borderRadius: 6, border: '1px solid rgba(239,83,80,0.3)', background: 'rgba(239,83,80,0.1)',
+                                  color: '#ef5350', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                                }}>
+                                  <X size={16} strokeWidth={2.5} />
+                                </button>
+                                <button onClick={() => handleFinancialAction(fin.id, 'approve')} style={{
+                                  display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 32, borderRadius: 6,
+                                  border: '1px solid #26a69a', background: 'rgba(38,166,154,0.15)',
+                                  color: '#26a69a', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+                                }}>
+                                  <Check size={16} strokeWidth={2.5} /> APPROVE
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#555', fontSize: 11 }}>Processed</span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -706,8 +858,63 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               </div>
             )}
 
+            {/* ── Subscription Tab ── */}
+            {activeTab === 'subscription' && (
+              <div className="crm-section fade-in">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#FFD700', letterSpacing: '0.05em' }}>SUBSCRIPTION PAYMENTS</h2>
+                  <button
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    style={{ padding: '8px 20px', background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    + NEW PAYMENT
+                  </button>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+                    <thead style={{ background: 'rgba(0,0,0,0.2)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
+                      <tr>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>DATE</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>PACKAGE</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>AMOUNT</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>METHOD</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>PROOF</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subscriptionPayments.length === 0 ? (
+                        <tr><td colSpan={6} style={{ padding: 32, textAlign: 'center', color: '#8a8e9b' }}>No subscription payments yet. Submit a payment to activate your account.</td></tr>
+                      ) : subscriptionPayments.map((sp: any) => (
+                        <tr key={sp.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '12px 16px', color: '#8a8e9b', fontSize: 11 }}>{new Date(sp.created_at).toLocaleDateString('en-GB')}</td>
+                          <td style={{ padding: '12px 16px', color: '#c0c3ce' }}>{sp.package || '—'}</td>
+                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#fff', fontWeight: 600 }}>${Number(sp.amount).toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', color: '#c0c3ce' }}>{sp.method || '—'}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            {sp.proof_url ? (
+                              <a href={sp.proof_url} target="_blank" rel="noopener noreferrer" style={{ background: 'transparent', border: '1px solid #787b86', display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 10, cursor: 'pointer', textDecoration: 'none' }}>
+                                <Eye size={12} /> View
+                              </a>
+                            ) : <span style={{ color: '#555', fontSize: 10 }}>No Receipt</span>}
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                            <span style={{
+                              padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                              background: sp.status === 'Approved' ? 'rgba(38,166,154,0.1)' : sp.status === 'Rejected' ? 'rgba(239,83,80,0.1)' : 'rgba(255,215,0,0.1)',
+                              color: sp.status === 'Approved' ? '#26a69a' : sp.status === 'Rejected' ? '#ef5350' : '#FFD700',
+                            }}>
+                              {(sp.status || 'Pending').toUpperCase()}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
-            
           </div>
         </div>
       </div>
@@ -816,7 +1023,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         }}>
           <div style={{
             width: '100%', maxWidth: 450, background: '#0b0e11', borderRadius: 16, border: '1px solid rgba(255,215,0,0.2)',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.5)', overflow: 'hidden'
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden'
           }}>
             <div style={{ padding: '24px 30px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: '#FFD700' }}>SUBSCRIPTION PAYMENT</h2>
@@ -824,39 +1031,164 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             </div>
             
             <form onSubmit={handleSubscriptionPayment} style={{ padding: 30, display: 'flex', flexDirection: 'column', gap: 15 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>AMOUNT (USD)</label>
-                <input 
-                  type="number" required
-                  value={paymentAmount}
-                  onChange={e => setPaymentAmount(e.target.value)}
-                  placeholder="0.00"
-                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} 
-                />
-              </div>
 
+              {/* BILLING CYCLE */}
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PAYMENT METHOD</label>
-                <select 
-                  required
-                  value={paymentMethod}
-                  onChange={e => setPaymentMethod(e.target.value)}
-                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', cursor: 'pointer' }}
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>BILLING CYCLE</label>
+                <select
+                  value={billingCycle}
+                  onChange={e => setBillingCycle(e.target.value as BillingCycle)}
+                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(20,22,28,1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFFFFF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: 40 }}
                 >
-                  <option value="">— Select Method —</option>
-                  <option value="crypto_usdt" style={{ color: '#000' }}>USDT (Tether)</option>
-                  <option value="crypto_btc" style={{ color: '#000' }}>Bitcoin (BTC)</option>
-                  <option value="bank_transfer" style={{ color: '#000' }}>Bank Transfer</option>
+                  {BILLING_CYCLES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
 
-              <button 
-                type="submit" 
-                disabled={paymentLoading}
-                style={{ 
-                  width: '100%', padding: 14, marginTop: 10, background: '#FFD700', border: 'none', 
+              {/* PACKAGE */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PACKAGE</label>
+                <select
+                  value={selectedPackage}
+                  onChange={e => setSelectedPackage(e.target.value as PackageKey)}
+                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(20,22,28,1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFFFFF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: 40 }}
+                >
+                  {(Object.entries(SUBSCRIPTION_PACKAGES) as [PackageKey, typeof SUBSCRIPTION_PACKAGES[PackageKey]][]).map(([key, pkg]) => (
+                    <option key={key} value={key}>
+                      {pkg.label} — ${billingCycle === 'monthly' ? pkg.monthly : pkg.yearly}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* TRIAL PERIOD */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>TRIAL PERIOD</label>
+                <select
+                  value={trialOption}
+                  onChange={e => setTrialOption(e.target.value)}
+                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(20,22,28,1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFFFFF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: 40 }}
+                >
+                  {TRIAL_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+
+              {/* PAYMENT METHOD */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PAYMENT METHOD</label>
+                <select
+                  required
+                  value={paymentMethod}
+                  onChange={e => setPaymentMethod(e.target.value)}
+                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(20,22,28,1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', cursor: 'pointer' }}
+                >
+                  <option value="">— Select Method —</option>
+                  <option value="crypto_usdt">USDT (Tether)</option>
+                  <option value="crypto_btc">Bitcoin (BTC)</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                </select>
+              </div>
+
+              {/* Dynamic payment details panel */}
+              {paymentMethod === 'bank_transfer' && (
+                <div style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8, padding: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', marginBottom: 10, letterSpacing: '0.05em' }}>BANK TRANSFER DETAILS</div>
+                  <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
+                    <div><span style={{ color: '#8a8e9b' }}>Bank:</span> Al Rajhi Bank</div>
+                    <div><span style={{ color: '#8a8e9b' }}>Account Name:</span> The Vault Platform LLC</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#8a8e9b' }}>IBAN:</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11 }}>SA1234567890123456789012</span>
+                      <button type="button" onClick={() => { navigator.clipboard.writeText('SA1234567890123456789012') }}
+                        style={{ background: '#FFD700', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>COPY</button>
+                    </div>
+                    <div><span style={{ color: '#8a8e9b' }}>SWIFT:</span> RJHISARI</div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'crypto_usdt' && (
+                <div style={{ background: 'rgba(38,166,154,0.05)', border: '1px solid rgba(38,166,154,0.2)', borderRadius: 8, padding: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#26a69a', marginBottom: 10, letterSpacing: '0.05em' }}>USDT (TRC-20) DETAILS</div>
+                  <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
+                    <div><span style={{ color: '#8a8e9b' }}>Network:</span> TRON (TRC-20)</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#8a8e9b' }}>Address:</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 10, wordBreak: 'break-all' }}>TXxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
+                      <button type="button" onClick={() => { navigator.clipboard.writeText('TXxxxxxxxxxxxxxxxxxxxxxxxxxxx') }}
+                        style={{ background: '#26a69a', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>COPY</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'crypto_btc' && (
+                <div style={{ background: 'rgba(255,152,0,0.05)', border: '1px solid rgba(255,152,0,0.2)', borderRadius: 8, padding: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#FF9800', marginBottom: 10, letterSpacing: '0.05em' }}>BITCOIN (BTC) DETAILS</div>
+                  <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
+                    <div><span style={{ color: '#8a8e9b' }}>Network:</span> Bitcoin (BTC)</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#8a8e9b' }}>Address:</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 10, wordBreak: 'break-all' }}>bc1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
+                      <button type="button" onClick={() => { navigator.clipboard.writeText('bc1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') }}
+                        style={{ background: '#FF9800', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>COPY</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>
+                  AMOUNT (USD)
+                  {trialOption !== 'none' && (
+                    <span style={{ marginLeft: 8, color: '#10B981', fontSize: 10, fontWeight: 700 }}>(Trial — $0.00 now)</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={`$${paymentAmount}`}
+                  readOnly
+                  style={{ width: '100%', padding: '12px 16px', background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: trialOption !== 'none' ? '#10B981' : '#FFD700', fontSize: 18, fontWeight: 700, cursor: 'not-allowed', outline: 'none' }}
+                />
+                {trialOption !== 'none' && (
+                  <div style={{ marginTop: 5, fontSize: 11, color: '#8a8e9b' }}>
+                    After trial: ${billingCycle === 'monthly' ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly : SUBSCRIPTION_PACKAGES[selectedPackage].yearly}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
+                  </div>
+                )}
+              </div>
+
+              {/* Proof Upload — hidden during trial */}
+              {trialOption === 'none' ? (
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PAYMENT PROOF (Required)</label>
+                  <input
+                    type="file" accept="image/*,application/pdf"
+                    onChange={e => setPaymentProofFile(e.target.files?.[0] || null)}
+                    required
+                    style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: `1px solid ${paymentProofFile ? '#26a69a' : 'rgba(255,255,255,0.1)'}`, borderRadius: 8, color: '#fff', cursor: 'pointer' }}
+                  />
+                  {paymentProofFile && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#26a69a' }}>✓ {paymentProofFile.name}</div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: 14, background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#10B981', marginBottom: 4 }}>Trial Mode Active</div>
+                  <div style={{ fontSize: 11, color: '#8a8e9b', lineHeight: 1.6 }}>
+                    No payment required. You will be charged{' '}
+                    <span style={{ color: '#FFD700', fontWeight: 700 }}>
+                      ${billingCycle === 'monthly' ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly : SUBSCRIPTION_PACKAGES[selectedPackage].yearly}
+                    </span>/{billingCycle === 'monthly' ? 'mo' : 'yr'} after your trial expires.
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={paymentLoading || !paymentMethod || !paymentProofFile}
+                style={{
+                  width: '100%', padding: 14, marginTop: 4, background: '#FFD700', border: 'none',
                   borderRadius: 8, color: '#000', fontWeight: 800, fontSize: 14, cursor: 'pointer',
-                  opacity: paymentLoading ? 0.6 : 1
+                  opacity: (paymentLoading || !paymentMethod || !paymentProofFile) ? 0.5 : 1
                 }}
               >
                 {paymentLoading ? 'SUBMITTING...' : 'SUBMIT PAYMENT'}

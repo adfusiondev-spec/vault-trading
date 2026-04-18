@@ -1,10 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ChevronLeft, ArrowUpCircle, ArrowDownCircle, ShieldCheck, Search, ShieldAlert, FileText, CheckCircle2, Activity, User, ArrowLeft, Phone, Mail } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { useMarketData } from '@/hooks/useMarketData'
+import { useTranslation } from '@/lib/i18n'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 type Order = {
   id: string
@@ -22,6 +24,7 @@ type Order = {
 
 export default function ClientDetailsPage({ params }: { params: Promise<{ slug: string, id: string }> }) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { id, slug } = React.use(params)
   const [mounted, setMounted] = useState(false)
   
@@ -36,6 +39,8 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
   const [asset, setAsset] = useState('BTCUSDT') // match binance formatting
   const [tradeAmount, setTradeAmount] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
+  const [clientTxs, setClientTxs] = useState<any[]>([])
+  const [allRawTrades, setAllRawTrades] = useState<any[]>([])
   const [leadStatus, setLeadStatus] = useState('New Prospect')
   const [notes, setNotes] = useState('')
   const [clientUUID, setClientUUID] = useState<string | null>(null)
@@ -45,9 +50,11 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
   const [newPassword, setNewPassword] = useState('')
   const [showNewPw, setShowNewPw] = useState(false)
   const [isBanned, setIsBanned] = useState(false)
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [showCurrentPw, setShowCurrentPw] = useState(false)
-  const [savingProfile, setSavingProfile] = useState(false)
+  const [adjAmount, setAdjAmount] = useState('')
+  const [adjType, setAdjType] = useState<'credit' | 'debit'>('credit')
+  const [adjNote, setAdjNote] = useState('')
+  const [adjLoading, setAdjLoading] = useState(false)
+const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [togglingBan, setTogglingBan] = useState(false)
 
@@ -55,6 +62,59 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
   const livePrice = prices[asset]?.price || 0
 
   const clientId = decodeURIComponent(id)
+
+  const syncData = React.useCallback(async () => {
+    const supabase = createClient()
+    setLoading(true)
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles').select('*').eq('id', clientId).single()
+      if (profileError) throw profileError
+      setClientName(profileData.full_name || profileData.email || 'Loading...')
+      setClientEmail(profileData.email || '')
+      setEditForm({
+        full_name: profileData.full_name || '',
+        phone_number: profileData.phone_number || '',
+        country: profileData.country || ''
+      })
+      setIsBanned(!!profileData.is_banned)
+      if (profileData.notes) setNotes(profileData.notes)
+      if ((profileData as any).lead_status) setLeadStatus((profileData as any).lead_status)
+      setClientUUID(clientId)
+
+      const { data: walletData } = await supabase
+        .from('wallets').select('*').eq('user_id', clientId).single()
+      setBalance(walletData?.balance ? parseFloat(walletData.balance) : 0)
+
+      const { data: tradesData } = await supabase
+        .from('trades').select('*').eq('user_id', clientId)
+        .order('created_at', { ascending: false })
+      if (tradesData) {
+        setAllRawTrades(tradesData)
+        const formattedTrades = tradesData.map((o: any) => {
+          const entryPrice = parseFloat(o.entry_price || '0')
+          const amount = parseFloat(o.amount || '0')
+          return {
+            id: o.id, symbol: o.symbol, asset: o.symbol, label: o.symbol,
+            type: o.type === 'buy' ? 'Buy' : 'Sell',
+            amountUSD: amount, qty: entryPrice > 0 ? amount / entryPrice : 0,
+            entryPrice, timestamp: new Date(o.created_at).getTime(),
+            status: o.status === 'open' ? 'Open' : (o.status === 'closed' ? 'Completed' : 'Cancelled'),
+            pnl: parseFloat(o.profit_loss || '0'),
+          }
+        })
+        setOrders(formattedTrades.filter((t: any) => t.status === 'Open'))
+      }
+
+      const { data: txData } = await supabase
+        .from('transactions').select('*').eq('user_id', clientId)
+      setClientTxs(txData || [])
+    } catch (err) {
+      console.error('syncData error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [clientId])
 
   const loadClientData = React.useCallback(async () => {
     const supabase = createClient()
@@ -68,7 +128,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
     
     const { data: profile } = await supabase
       .from('profiles')
-      .select('full_name, email, phone_number, country, notes, is_banned, plain_password')
+      .select('full_name, email, phone_number, country, notes, is_banned')
       .eq('id', clientId)
       .maybeSingle()
     
@@ -81,14 +141,15 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
         country: profile.country || ''
       })
       setIsBanned(!!profile.is_banned)
-      setCurrentPassword(profile.plain_password || '')
       if (profile.notes) setNotes(profile.notes)
+      if ((profile as any).lead_status) setLeadStatus((profile as any).lead_status)
       setClientUUID(clientId)
     }
 
     // Sync Trades
     const { data: oData } = await supabase.from('trades').select('*').eq('user_id', clientId).order('created_at', { ascending: false })
     if (oData) {
+      setAllRawTrades(oData)
       const formattedTrades = oData.map((o: any) => {
         const entryPrice = parseFloat(o.entry_price || '0')
         const amount = parseFloat(o.amount || '0')
@@ -108,6 +169,10 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
       })
       setOrders(formattedTrades.filter((t: any) => t.status === 'Open'))
     }
+
+    const { data: txData } = await supabase
+      .from('transactions').select('*').eq('user_id', clientId)
+    setClientTxs(txData || [])
   }, [clientId])
 
   useEffect(() => {
@@ -170,6 +235,19 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
     }
   }, [router, clientId, loadClientData])
 
+  const clientStats = useMemo(() => {
+    const totalDeposits = clientTxs
+      .filter((tx: any) => tx.type === 'deposit' && tx.status === 'approved')
+      .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0)
+    const totalWithdrawals = clientTxs
+      .filter((tx: any) => tx.type === 'withdrawal' && tx.status === 'approved')
+      .reduce((sum: number, tx: any) => sum + Number(tx.amount || 0), 0)
+    const closedTrades = allRawTrades.filter((t: any) => t.status === 'closed')
+    const totalPnL = closedTrades.reduce((sum: number, t: any) => sum + Number(t.profit_loss || 0), 0)
+    const openTradesCount = allRawTrades.filter((t: any) => t.status === 'open').length
+    return { totalDeposits, totalWithdrawals, totalPnL, openTradesCount }
+  }, [clientTxs, allRawTrades])
+
   if (!mounted || loading) {
     return (
       <div style={{
@@ -177,7 +255,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
         justifyContent: 'center', alignItems: 'center', background: '#0b0e11', color: '#fff'
       }}>
         <div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,215,0,0.1)', borderTopColor: '#FFD700', animation: 'spin 1s linear infinite' }} />
-        <p style={{ marginTop: 16, fontSize: 11, letterSpacing: '0.2em', color: '#8a8e9b', fontWeight: 600 }}>AUTHENTICATING...</p>
+        <p style={{ marginTop: 16, fontSize: 11, letterSpacing: '0.2em', color: '#8a8e9b', fontWeight: 600 }}>{t.authenticating}</p>
         <style dangerouslySetInnerHTML={{ __html: '@keyframes spin { to { transform: rotate(360deg); } }' }} />
       </div>
     )
@@ -297,7 +375,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
             border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 16px',
             borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s'
           }}>
-            <ArrowLeft size={16} /> Back to CRM
+            <ArrowLeft size={16} /> {t.back_to_crm}
           </button>
           <div style={{ paddingLeft: 20, borderLeft: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(38,166,154,0.1)', border: '1px solid #26a69a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -307,7 +385,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
               <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: '0.05em', color: '#fff' }}>{clientName}</div>
               <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                 <span style={{ color: '#26a69a', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>{displayEmail}</span>
-                <span style={{ color: '#26a69a', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12} /> VERIFIED CLIENT</span>
+                <span style={{ color: '#26a69a', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12} /> {t.verified_client}</span>
                 <span style={{ color: '#8a8e9b', fontSize: 11 }}>ID: {clientIdStr.toUpperCase().substring(0, 8)}</span>
               </div>
             </div>
@@ -315,8 +393,9 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+          <LanguageToggle />
           <div style={{ textAlign: 'right' }}>
-            <div style={{ color: '#8a8e9b', fontSize: 11, letterSpacing: '0.05em', fontWeight: 600, marginBottom: 2 }}>CURRENT BALANCE</div>
+            <div style={{ color: '#8a8e9b', fontSize: 11, letterSpacing: '0.05em', fontWeight: 600, marginBottom: 2 }}>{t.current_balance}</div>
             <div style={{ color: '#FFD700', fontSize: 20, fontWeight: 700, fontFamily: 'monospace' }}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
           </div>
         </div>
@@ -326,9 +405,25 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
         
         {/* ── Center: Admin Execution Terminal ── */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#06080a', overflowY: 'auto', padding: 30, borderRight: '1px solid var(--border)' }}>
+
+          {/* Quick Stats Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 30 }}>
+            {[
+              { label: t.total_deposits, value: `$${clientStats.totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#FFD700' },
+              { label: t.total_withdrawals, value: `$${clientStats.totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#FFD700' },
+              { label: t.closed_trades_pnl, value: `${clientStats.totalPnL >= 0 ? '+' : ''}$${Math.abs(clientStats.totalPnL).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: clientStats.totalPnL >= 0 ? '#22c55e' : '#ef4444' },
+              { label: t.open_trades, value: String(clientStats.openTradesCount), color: '#FFD700' },
+            ].map(stat => (
+              <div key={stat.label} style={{ background: '#0a0a0a', border: '1px solid #FFD700', borderRadius: 8, padding: 16 }}>
+                <div style={{ fontSize: 11, color: '#999', marginBottom: 6 }}>{stat.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: stat.color, fontFamily: 'monospace' }}>{stat.value}</div>
+              </div>
+            ))}
+          </div>
+
           <div className="fade-in">
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 24, color: '#FFD700', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Activity size={20} /> PORTFOLIO MANAGEMENT TERMINAL (ADMIN)
+              <Activity size={20} /> {t.portfolio_terminal}
             </h2>
 
             {/* Execution Bar */}
@@ -383,21 +478,21 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
             </div>
 
             {/* Open Positions */}
-            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, color: '#fff' }}>ACTIVE OPEN POSITIONS</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16, color: '#fff' }}>{t.active_open_positions}</h3>
             <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                 <thead style={{ background: 'rgba(0,0,0,0.3)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                   <tr>
-                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>TICKET</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>ASSET & TYPE</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>AMOUNT</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>PNL</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>ADMIN ACTION</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.ticket}</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.asset} & {t.type}</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.amount}</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.profit_loss}</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>{t.admin_action}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orders.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: 30, textAlign: 'center', color: '#8a8e9b' }}>No active trades for this client.</td></tr>
+                    <tr><td colSpan={5} style={{ padding: 30, textAlign: 'center', color: '#8a8e9b' }}>{t.no_active_trades}</td></tr>
                   ) : orders.map(trade => (
                     <tr key={trade.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       <td style={{ padding: '14px 16px', fontFamily: 'monospace', color: '#8a8e9b' }}>{trade.id}</td>
@@ -457,14 +552,28 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
           {/* SALES & CRM */}
           <div style={{ padding: 24, borderBottom: '1px solid var(--border)' }}>
             <h2 style={{ fontSize: 14, fontWeight: 700, color: '#fff', letterSpacing: '0.05em', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Phone size={16} color="#FFD700" /> SALES & CRM DATA
+              <Phone size={16} color="#FFD700" /> {t.sales_crm}
             </h2>
             
             <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: '0.05em' }}>LEAD STATUS</label>
-            <select value={leadStatus} onChange={(e) => setLeadStatus(e.target.value)} style={{
-              width: '100%', padding: '12px 14px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
-              color: '#FFD700', fontSize: 13, fontWeight: 600, outline: 'none', cursor: 'pointer', appearance: 'none', marginBottom: 20
-            }}>
+            <select
+              value={leadStatus}
+              onChange={async (e) => {
+                const newStatus = e.target.value
+                setLeadStatus(newStatus)
+                const supabase = createClient()
+                await (supabase.from('profiles') as any).update({ lead_status: newStatus }).eq('id', clientId)
+              }}
+              style={{
+                width: '100%', padding: '12px 14px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+                color: '#FFD700', fontSize: 13, fontWeight: 600, outline: 'none', cursor: 'pointer', appearance: 'none', marginBottom: 20
+              }}
+            >
+              <option>Active</option>
+              <option>Hot Lead</option>
+              <option>Cold</option>
+              <option>Prospect</option>
+              <option>Inactive</option>
               <option>New Prospect</option>
               <option>Contacted</option>
               <option>In Negotiation</option>
@@ -484,7 +593,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
 
           {/* CLIENT INFORMATION (editable) */}
           <div style={{ padding: 24, borderBottom: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', letterSpacing: '0.08em', marginBottom: 16 }}>CLIENT INFORMATION</h3>
+            <h3 style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', letterSpacing: '0.08em', marginBottom: 16 }}>{t.client_information}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
                 { label: 'FULL NAME', key: 'full_name' },
@@ -505,42 +614,72 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
                 disabled={savingProfile}
                 style={{ padding: '10px', background: '#FFD700', border: 'none', borderRadius: 6, color: '#000', fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: savingProfile ? 0.6 : 1, letterSpacing: '0.05em' }}
               >
-                {savingProfile ? 'SAVING...' : 'SAVE CHANGES'}
+                {savingProfile ? t.saving : t.save_changes}
+              </button>
+            </div>
+          </div>
+
+          {/* BALANCE ADJUSTMENT */}
+          <div style={{ padding: 24, borderBottom: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', letterSpacing: '0.08em', marginBottom: 16 }}>BALANCE ADJUSTMENT</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['credit', 'debit'] as const).map(type => (
+                  <button key={type} onClick={() => setAdjType(type)} style={{
+                    flex: 1, padding: '8px', borderRadius: 6,
+                    border: `1px solid ${adjType === type ? (type === 'credit' ? '#26a69a' : '#ef5350') : 'rgba(255,255,255,0.1)'}`,
+                    background: adjType === type ? (type === 'credit' ? 'rgba(38,166,154,0.15)' : 'rgba(239,83,80,0.15)') : 'transparent',
+                    color: adjType === type ? (type === 'credit' ? '#26a69a' : '#ef5350') : '#8a8e9b',
+                    fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em'
+                  }}>{type === 'credit' ? '+ CREDIT' : '− DEBIT'}</button>
+                ))}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 12, top: 10, color: '#8a8e9b', fontSize: 13 }}>$</span>
+                <input type="number" value={adjAmount} onChange={e => setAdjAmount(e.target.value)} placeholder="0.00"
+                  style={{ width: '100%', padding: '9px 12px 9px 26px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none' }} />
+              </div>
+              <input type="text" value={adjNote} onChange={e => setAdjNote(e.target.value)} placeholder="Note (optional)"
+                style={{ width: '100%', padding: '9px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none' }} />
+              <button
+                onClick={async () => {
+                  const amt = parseFloat(adjAmount)
+                  if (!amt || amt <= 0) return alert('Enter a valid amount.')
+                  if (!confirm(`${adjType === 'credit' ? 'Credit' : 'Debit'} $${amt.toFixed(2)} ${adjType === 'credit' ? 'to' : 'from'} this client's balance?`)) return
+                  setAdjLoading(true)
+                  try {
+                    const supabase = createClient()
+                    const { data: w } = await supabase.from('wallets').select('balance').eq('user_id', clientId).single()
+                    const current = parseFloat((w as any)?.balance || '0')
+                    const updated = adjType === 'credit' ? current + amt : Math.max(0, current - amt)
+                    const { error } = await supabase.from('wallets').update({ balance: updated }).eq('user_id', clientId)
+                    if (error) throw error
+                    setBalance(updated)
+                    setAdjAmount('')
+                    setAdjNote('')
+                    alert(`Balance ${adjType === 'credit' ? 'credited' : 'debited'} successfully. New balance: $${updated.toFixed(2)}`)
+                  } catch (e: any) {
+                    alert('Error: ' + e.message)
+                  } finally {
+                    setAdjLoading(false)
+                  }
+                }}
+                disabled={adjLoading || !adjAmount}
+                style={{
+                  padding: '10px', background: adjType === 'credit' ? '#26a69a' : '#ef5350', border: 'none',
+                  borderRadius: 6, color: '#fff', fontWeight: 700, fontSize: 12,
+                  cursor: adjLoading || !adjAmount ? 'not-allowed' : 'pointer',
+                  opacity: adjLoading || !adjAmount ? 0.6 : 1, letterSpacing: '0.05em'
+                }}
+              >
+                {adjLoading ? 'PROCESSING…' : `APPLY ${adjType.toUpperCase()}`}
               </button>
             </div>
           </div>
 
           {/* SECURITY & ACCESS */}
           <div style={{ padding: 24, borderBottom: '1px solid var(--border)' }}>
-            <h3 style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', letterSpacing: '0.08em', marginBottom: 16 }}>SECURITY & ACCESS</h3>
-
-            {/* ─ Current Password ─ */}
-            <div style={{ marginBottom: 18 }}>
-              <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#8a8e9b', letterSpacing: '0.05em', marginBottom: 8 }}>CURRENT PASSWORD</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{
-                  flex: 1, padding: '9px 12px', background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: 6,
-                  fontFamily: 'monospace', fontSize: 13,
-                  color: showCurrentPw ? '#26a69a' : '#555',
-                  letterSpacing: showCurrentPw ? '0.04em' : '0.2em',
-                  userSelect: showCurrentPw ? 'text' : 'none'
-                }}>
-                  {showCurrentPw ? (currentPassword || 'Not saved') : '••••••••'}
-                </div>
-                <button
-                  onClick={() => setShowCurrentPw(!showCurrentPw)}
-                  style={{
-                    padding: '9px 14px', background: showCurrentPw ? 'rgba(239,83,80,0.08)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${showCurrentPw ? 'rgba(239,83,80,0.3)' : 'rgba(255,255,255,0.1)'}`,
-                    borderRadius: 6, color: showCurrentPw ? '#ef5350' : '#8a8e9b',
-                    cursor: 'pointer', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.05em'
-                  }}
-                >
-                  {showCurrentPw ? 'HIDE' : 'SHOW'}
-                </button>
-              </div>
-            </div>
+            <h3 style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', letterSpacing: '0.08em', marginBottom: 16 }}>{t.security_access}</h3>
 
             {/* ─ New Password ─ */}
             <div style={{ marginBottom: 16 }}>
@@ -581,7 +720,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
                   letterSpacing: '0.05em', opacity: savingPassword ? 0.6 : 1
                 }}
               >
-                {savingPassword ? 'SAVING...' : 'SAVE NEW PASSWORD'}
+                {savingPassword ? t.saving : t.reset_password}
               </button>
             </div>
 
@@ -601,14 +740,14 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
                 }}
               >
                 <ShieldAlert size={14} />
-                {togglingBan ? 'PROCESSING...' : isBanned ? 'UNBAN CLIENT' : 'BAN CLIENT'}
+                {togglingBan ? t.loading : isBanned ? t.unban_client : t.ban_client}
               </button>
             </div>
           </div>
 
           {/* RETENTION NOTES */}
           <div style={{ padding: 24, flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: '0.05em' }}>RETENTION & CALL NOTES</label>
+            <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: '0.05em' }}>{t.retention_notes}</label>
             <textarea 
               value={notes} 
               onChange={(e) => setNotes(e.target.value)}
@@ -625,7 +764,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
                 color: '#000', fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: '0.05em'
               }}
             >
-              SAVE CRM NOTES
+              {t.save_crm_notes}
             </button>
           </div>
         </div>

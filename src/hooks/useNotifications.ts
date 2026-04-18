@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 export const useNotifications = (userId: string, userRole: string) => {
   const [notifications, setNotifications] = useState<any[]>([])

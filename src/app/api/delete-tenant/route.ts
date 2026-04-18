@@ -12,16 +12,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   
-  if (user.email !== 'admin@thevault.io') {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-      
-    if (profile?.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Forbidden. You do not have super_admin privileges.' }, { status: 403 })
-    }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single() as { data: { role: string } | null }
+
+  if (profile?.role !== 'super_admin') {
+    return NextResponse.json({ error: 'Forbidden. You do not have super_admin privileges.' }, { status: 403 })
   }
 
   // 2. Delete the tenant user using service role

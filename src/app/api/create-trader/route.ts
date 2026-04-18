@@ -56,8 +56,7 @@ export async function POST(request: NextRequest) {
         phone_number,
         country,
         assigned_to: assignedToId,
-        role: 'trader',
-        plain_password: password
+        role: 'trader'
       })
       .eq('id', authUser.user.id)
 

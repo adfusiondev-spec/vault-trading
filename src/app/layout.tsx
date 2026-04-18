@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
+import { I18nProvider } from '@/lib/i18n';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${outfit.variable} h-full antialiased dark`}>
       <body className="min-h-full flex flex-col font-inter bg-slate-950">
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

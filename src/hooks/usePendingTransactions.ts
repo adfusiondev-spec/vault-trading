@@ -3,13 +3,13 @@ import { createClient } from '@/lib/supabase/client'
 
 export function usePendingTransactions() {
   const [pending, setPending] = useState<any[]>([])
+  const [allTransactions, setAllTransactions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
     fetchPending()
 
-    // Realtime — يظهر الطلب فوراً عند إنشائه
     const channel = supabase
       .channel('admin-transactions')
       .on('postgres_changes', {
@@ -31,10 +31,11 @@ export function usePendingTransactions() {
           full_name, email, company_slug
         )
       `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true })
-    
-    setPending(data ?? [])
+      .order('created_at', { ascending: false })
+
+    const all = data ?? []
+    setAllTransactions(all)
+    setPending(all.filter((tx: any) => tx.status === 'pending'))
     setLoading(false)
   }
 
@@ -60,5 +61,5 @@ export function usePendingTransactions() {
     return data?.signedUrl
   }
 
-  return { pending, loading, reviewTransaction, getProofUrl }
+  return { pending, allTransactions, loading, reviewTransaction, getProofUrl }
 }

@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ShieldCheck, ChevronRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslation } from '@/lib/i18n'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 function LoginForm() {
   const router = useRouter()
@@ -17,6 +19,18 @@ function LoginForm() {
   const [mounted, setMounted] = useState(false)
 
   const [error, setError] = useState<string | null>(null)
+  const { t } = useTranslation()
+
+  const handleForgotPassword = async () => {
+    const email = prompt('Enter your email address to receive a reset link:')
+    if (!email) return
+    const supabase = createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) alert(error.message)
+    else alert('Password reset email sent. Check your inbox.')
+  }
 
   useEffect(() => {
     // Trigger fade-in animation slightly after mount
@@ -95,7 +109,8 @@ function LoginForm() {
             <ShieldCheck size={26} strokeWidth={2.5} color="#000" />
           </div>
           <h1 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>THE VAULT</h1>
-          <p style={{ color: '#8a8e9b', fontSize: 13, letterSpacing: '0.05em' }}>SECURE INSTITUTIONAL TRADING</p>
+          <p style={{ color: '#8a8e9b', fontSize: 13, letterSpacing: '0.05em' }}>{t.secure_trading}</p>
+          <div style={{ marginTop: 12 }}><LanguageToggle /></div>
         </div>
 
         {/* ── Form ── */}
@@ -103,7 +118,7 @@ function LoginForm() {
           
           {/* Email */}
           <div>
-            <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>EMAIL ADDRESS</label>
+            <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>{t.email_address}</label>
             <input
               type="email"
               value={email}
@@ -125,8 +140,8 @@ function LoginForm() {
           {/* Password */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-              <label style={{ color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600 }}>PASSWORD</label>
-              <a href="#" style={{ color: '#8a8e9b', fontSize: 11, textDecoration: 'none', transition: 'color 0.2s', ...({ ':hover': { color: '#fff' } } as any) }}>Forgot?</a>
+              <label style={{ color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600 }}>{t.password.toUpperCase()}</label>
+              <button type="button" onClick={handleForgotPassword} style={{ background: 'transparent', border: 'none', color: '#8a8e9b', fontSize: 11, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>{t.forgot_password}</button>
             </div>
             <input
               type="password"
@@ -171,7 +186,7 @@ function LoginForm() {
                 animation: 'spin 0.8s linear infinite'
               }} />
             ) : (
-              <>ACCESS VAULT <ChevronRight size={16} strokeWidth={2.5} /></>
+              <>{t.access_vault} <ChevronRight size={16} strokeWidth={2.5} /></>
             )}
           </button>
         </form>
@@ -180,7 +195,7 @@ function LoginForm() {
         {companySlug && (
           <div style={{ marginTop: 30, textAlign: 'center' }}>
             <p style={{ color: '#8a8e9b', fontSize: 12 }}>
-              Don't have an account? <Link href={`/register?company=${companySlug}`} style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 600, marginLeft: 4 }}>Request Access</Link>
+              {t.dont_have_account} <Link href={`/register?company=${companySlug}`} style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 600, marginLeft: 4 }}>{t.request_access_link}</Link>
             </p>
           </div>
         )}

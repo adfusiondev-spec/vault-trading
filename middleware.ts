@@ -52,12 +52,16 @@ export async function middleware(request: NextRequest) {
   if (user && isProtected) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, is_banned')
       .eq('id', user.id)
       .single()
 
+    if (profile?.is_banned === true) {
+      return NextResponse.redirect(new URL('/login?reason=banned', request.url))
+    }
+
     const role = profile?.role
-    const wrongRoute = 
+    const wrongRoute =
       (path.startsWith('/admin') && role !== 'super_admin') ||
       (path.startsWith('/sub-admin') && role !== 'sub_admin') ||
       (path.startsWith('/user') && role !== 'trader')
@@ -73,7 +77,7 @@ export async function middleware(request: NextRequest) {
   // منع الوصول لـ /login و /register إذا كان مسجلاً
   if (user && (path === '/login')) {
     const { data: profile } = await supabase
-      .from('profiles').select('role').eq('id', user.id).single()
+      .from('profiles').select('role, is_banned').eq('id', user.id).single()
     
     if (profile?.role === 'super_admin') return NextResponse.redirect(new URL('/admin', request.url))
     if (profile?.role === 'sub_admin') return NextResponse.redirect(new URL('/sub-admin', request.url))

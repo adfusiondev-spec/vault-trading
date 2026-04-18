@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Check, X, Eye } from 'lucide-react'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 export function FinancialDesk() {
   const [payments, setPayments] = useState<any[]>([])
@@ -32,11 +32,23 @@ export function FinancialDesk() {
 
   const handleAction = async (id: string, newStatus: string) => {
     const adminClient = createClient()
+    const payment = payments.find(p => p.id === id)
     const { error } = await adminClient.from('subscription_payments').update({ status: newStatus }).eq('id', id)
-    if (!error) {
-      setPayments(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p))
-    } else {
-      alert('Error updating payment: ' + error.message)
+    if (error) { alert('Error updating payment: ' + error.message); return }
+    setPayments(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p))
+
+    // Send notification to sub_admin
+    if (payment?.sub_admin_id) {
+      const isApproved = newStatus === 'Approved'
+      await (adminClient.from('notifications') as any).insert({
+        user_id: payment.sub_admin_id,
+        user_role: 'sub_admin',
+        title: isApproved ? 'Subscription Approved' : 'Subscription Rejected',
+        message: isApproved
+          ? `Your subscription payment of $${Number(payment.amount).toLocaleString()} has been approved. Your account is now active.`
+          : `Your subscription payment of $${Number(payment.amount).toLocaleString()} was rejected. Please contact support.`,
+        read: false,
+      })
     }
   }
 

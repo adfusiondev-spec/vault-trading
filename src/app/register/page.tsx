@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ShieldCheck, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { useTranslation } from '@/lib/i18n'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -17,6 +19,7 @@ export default function RegisterPage() {
   const [isSuccess, setIsSuccess] = useState(false)
 
   const [error, setError] = useState<string | null>(null)
+  const { t } = useTranslation()
 
   const searchParams = useSearchParams()
   const companySlug = searchParams.get('company')
@@ -113,8 +116,9 @@ export default function RegisterPage() {
           </div>
           <h1 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>THE VAULT</h1>
           <p style={{ color: '#8a8e9b', fontSize: 13, letterSpacing: '0.05em' }}>
-            {isSuccess ? 'REGISTRATION COMPLETE' : company ? `إنشاء حساب في ${company.full_name}` : 'REQUEST INSTITUTIONAL ACCESS'}
+            {isSuccess ? t.registration_complete : company ? `${t.register} — ${company.full_name}` : t.request_institutional}
           </p>
+          <div style={{ marginTop: 12 }}><LanguageToggle /></div>
         </div>
 
         {isSuccess ? (
@@ -122,10 +126,10 @@ export default function RegisterPage() {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
               <CheckCircle2 size={48} color="#FFD700" />
             </div>
-            <h2 style={{ fontSize: 18, marginBottom: 10 }}>Check Your Email</h2>
+            <h2 style={{ fontSize: 18, marginBottom: 10 }}>{t.check_email}</h2>
             <p style={{ color: '#8a8e9b', fontSize: 13, lineHeight: 1.5, marginBottom: 30 }}>
-              We have sent a verification link to <strong style={{ color: '#fff' }}>{email}</strong>. 
-              Please verify your address to activate your Vault account.
+              {t.verification_sent} <strong style={{ color: '#fff' }}>{email}</strong>.
+              {t.verify_to_activate}
             </p>
             <Link href="/login" style={{
               display: 'block', padding: '15px 0', width: '100%', borderRadius: 6,
@@ -133,7 +137,7 @@ export default function RegisterPage() {
               color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.1em',
               textDecoration: 'none', textAlign: 'center', transition: 'background 0.2s'
             }}>
-              RETURN TO LOGIN
+              {t.return_to_login}
             </Link>
           </div>
         ) : (
@@ -141,7 +145,7 @@ export default function RegisterPage() {
 
             {/* Full Name */}
             <div>
-              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>FULL NAME</label>
+              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>{t.full_name.toUpperCase()}</label>
               <input
                 type="text"
                 value={fullName}
@@ -162,7 +166,7 @@ export default function RegisterPage() {
             
             {/* Email */}
             <div>
-              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>EMAIL ADDRESS</label>
+              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>{t.email_address}</label>
               <input
                 type="email"
                 value={email}
@@ -183,7 +187,7 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>PASSWORD</label>
+              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, letterSpacing: '0.08em', fontWeight: 600, marginBottom: 8 }}>{t.password.toUpperCase()}</label>
               <input
                 type="password"
                 value={password}
@@ -227,7 +231,7 @@ export default function RegisterPage() {
                   animation: 'spin 0.8s linear infinite'
                 }} />
               ) : (
-                <>REQUEST ACCESS <ChevronRight size={16} strokeWidth={2.5} /></>
+                <>{t.request_access} <ChevronRight size={16} strokeWidth={2.5} /></>
               )}
             </button>
           </form>
@@ -237,7 +241,7 @@ export default function RegisterPage() {
         {!isSuccess && (
           <div style={{ marginTop: 30, textAlign: 'center' }}>
             <p style={{ color: '#8a8e9b', fontSize: 12 }}>
-              Already have an account? <Link href="/login" style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 600, marginLeft: 4 }}>Access Vault</Link>
+              {t.already_have_account} <Link href="/login" style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 600, marginLeft: 4 }}>{t.access_vault_link}</Link>
             </p>
           </div>
         )}
@@ -248,8 +252,8 @@ export default function RegisterPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
         /* Reset autofill styles that ruin dark mode */
         input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
         input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px #0b0e11 inset !important;
             -webkit-text-fill-color: white !important;
@@ -257,5 +261,18 @@ export default function RegisterPage() {
         }
       `}} />
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0b0e11' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(255,215,0,0.1)', borderTopColor: '#FFD700', animation: 'spin 1s linear infinite' }} />
+        <style dangerouslySetInnerHTML={{ __html: '@keyframes spin { to { transform: rotate(360deg); } }' }} />
+      </div>
+    }>
+      <RegisterContent />
+    </Suspense>
   )
 }

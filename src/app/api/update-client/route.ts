@@ -44,12 +44,6 @@ export async function POST(request: NextRequest) {
       })
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-      // Also save plain_password for CRM reference
-      await adminClient
-        .from('profiles')
-        .update({ plain_password: data.password })
-        .eq('id', user_id)
-
       return NextResponse.json({ success: true })
     }
 
