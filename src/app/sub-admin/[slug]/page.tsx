@@ -136,7 +136,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         const localRole = typeof window !== 'undefined' ? localStorage.getItem('vault_user_role') : null
 
         if (impersonatedId || localRole === 'sub_admin') {
-          const { data: company } = await supabase
+          const { data: company } = await (supabase as any)
             .from('profiles')
             .select('id, full_name, invite_token')
             .eq('company_slug', slug)
@@ -169,7 +169,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
         // super_admin can view sub-admin panel directly too
         if (profile.role === 'super_admin') {
-          const { data: company } = await supabase
+          const { data: company } = await (supabase as any)
             .from('profiles')
             .select('id, full_name, invite_token')
             .eq('company_slug', slug)
@@ -186,7 +186,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
           return
         }
 
-        const { data: company } = await supabase
+        const { data: company } = await (supabase as any)
           .from('profiles')
           .select('id, full_name, invite_token')
           .eq('company_slug', slug)
@@ -659,40 +659,44 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </div>
 
                 {/* ── Invite Link ── */}
-                {companyProfile?.invite_token && (
-                  <div style={{
-                    background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.25)',
-                    borderRadius: 8, padding: '14px 18px', marginBottom: 20,
-                    display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-                  }}>
-                    <div style={{ flex: 1, minWidth: 200 }}>
-                      <div style={{ color: '#FFD700', fontWeight: 700, fontSize: 12, letterSpacing: '0.05em', marginBottom: 6 }}>TRADER INVITE LINK</div>
-                      <input
-                        type="text"
-                        readOnly
-                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/register?invite=${companyProfile.invite_token}`}
-                        style={{
-                          width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,215,0,0.2)',
-                          color: '#c0c3ce', padding: '8px 12px', borderRadius: 6,
-                          fontFamily: 'monospace', fontSize: 12, outline: 'none',
-                        }}
-                      />
-                    </div>
+                <div style={{
+                  background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.3)',
+                  borderRadius: 8, padding: '16px 18px', marginBottom: 20,
+                }}>
+                  <div style={{ color: '#FFD700', fontWeight: 700, fontSize: 12, letterSpacing: '0.05em', marginBottom: 10 }}>📨 TRADER INVITE LINK</div>
+                  <div style={{ color: '#8a8e9b', fontSize: 12, marginBottom: 12 }}>
+                    Share this link — traders who register via it are automatically assigned to your account.
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      readOnly
+                      onClick={e => (e.target as HTMLInputElement).select()}
+                      value={companyProfile?.invite_token
+                        ? `${typeof window !== 'undefined' ? window.location.origin : ''}/register?invite=${companyProfile.invite_token}`
+                        : 'Loading…'}
+                      style={{
+                        flex: 1, minWidth: 200, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,215,0,0.2)',
+                        color: '#c0c3ce', padding: '9px 12px', borderRadius: 6,
+                        fontFamily: 'monospace', fontSize: 12, outline: 'none',
+                      }}
+                    />
                     <button
+                      disabled={!companyProfile?.invite_token}
                       onClick={() => {
-                        const link = `${window.location.origin}/register?invite=${companyProfile.invite_token}`
+                        const link = `${window.location.origin}/register?invite=${companyProfile!.invite_token}`
                         navigator.clipboard.writeText(link).then(() => alert('Invite link copied!')).catch(() => alert(link))
                       }}
                       style={{
-                        background: '#FFD700', color: '#000', border: 'none', borderRadius: 6,
-                        padding: '9px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 12,
-                        whiteSpace: 'nowrap', flexShrink: 0,
+                        background: companyProfile?.invite_token ? '#FFD700' : '#555', color: '#000', border: 'none', borderRadius: 6,
+                        padding: '9px 20px', cursor: companyProfile?.invite_token ? 'pointer' : 'not-allowed',
+                        fontWeight: 700, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0,
                       }}
                     >
                       Copy Link
                     </button>
                   </div>
-                )}
+                </div>
 
                 {/* ── Search Filter ── */}
                 <div style={{ marginBottom: 16 }}>
