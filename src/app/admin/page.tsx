@@ -8,6 +8,7 @@ import { FinancialDesk } from '@/components/admin/FinancialDesk'
 import { useNotifications } from '@/hooks/useNotifications'
 import { Bell } from 'lucide-react'
 import PaymentSettingsPanel from '@/components/admin/PaymentSettingsPanel'
+import { PackageSettings } from '@/components/admin/PackageSettings'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
 
@@ -17,7 +18,7 @@ export default function SuperAdminDashboard() {
   const router = useRouter()
   const { t } = useTranslation()
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState<'tenants' | 'system' | 'audit' | 'financial'>('tenants')
+  const [activeTab, setActiveTab] = useState<'tenants' | 'system' | 'audit' | 'financial' | 'packages' | 'payment-settings'>('tenants')
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
@@ -379,6 +380,7 @@ export default function SuperAdminDashboard() {
             { id: 'tenants', icon: Building2, label: t.leasing_companies },
             { id: 'system', icon: Database, label: 'Global Architecture' },
             { id: 'financial', icon: DollarSign, label: 'Subscription Payments' },
+            { id: 'packages', icon: Settings2, label: 'Package Settings' },
             { id: 'payment-settings', icon: Settings, label: t.payment_settings },
             { id: 'audit', icon: ShieldCheck, label: 'Security & Audit Logs' },
           ].map(item => {
@@ -575,14 +577,16 @@ export default function SuperAdminDashboard() {
             )}
             
             {activeTab === 'financial' && <FinancialDesk />}
-            
+
+            {activeTab === 'packages' && <PackageSettings />}
+
             {activeTab === 'payment-settings' && (
               <div className="crm-section fade-in" style={{ overflowY: 'auto', height: '100%' }}>
                 <PaymentSettingsPanel />
               </div>
             )}
             
-            {activeTab !== 'tenants' && activeTab !== 'financial' && activeTab !== 'payment-settings' && (
+            {activeTab !== 'tenants' && activeTab !== 'financial' && activeTab !== 'packages' && activeTab !== 'payment-settings' && (
               <div className="crm-section fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.5 }}>
                 <Key size={48} color="#FFD700" style={{ marginBottom: 20 }} />
                 <h3 style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>Authorized Personnel Only</h3>

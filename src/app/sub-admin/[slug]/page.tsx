@@ -16,11 +16,7 @@ const INITIAL_TRADES: any[] = []
 const INITIAL_FINANCIALS: any[] = []
 const INITIAL_LEADS: any[] = []
 
-const SUBSCRIPTION_PACKAGES = {
-  starter: { label: 'Starter', monthly: 99.00, yearly: 950.00 },
-  pro:     { label: 'Pro',     monthly: 199.00, yearly: 1900.00 },
-  vip:     { label: 'VIP',    monthly: 399.00, yearly: 3800.00 },
-} as const
+type DbPackage = { id: string; key: string; label: string; monthly_price: number; yearly_price: number }
 
 const TRIAL_OPTIONS = [
   { value: 'none',       label: 'None',         days: 0 },
@@ -34,8 +30,7 @@ const BILLING_CYCLES = [
   { value: 'yearly',  label: 'Yearly'  },
 ] as const
 
-type PackageKey     = keyof typeof SUBSCRIPTION_PACKAGES
-type BillingCycle   = 'monthly' | 'yearly'
+type BillingCycle = 'monthly' | 'yearly'
 
 export default function SubAdminDashboard({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter()
@@ -54,6 +49,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'financial' | 'subscription' | 'payment-settings'>('monitor')
   const [subscriptionPayments, setSubscriptionPayments] = useState<any[]>([])
+  const [dbPackages, setDbPackages] = useState<DbPackage[]>([])
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
@@ -101,23 +97,33 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
-  const [selectedPackage, setSelectedPackage] = useState<PackageKey>('pro')
+  const [selectedPackage, setSelectedPackage] = useState<string>('pro')
   const [trialOption, setTrialOption] = useState('none')
 
+  const activePkg = dbPackages.find(p => p.key === selectedPackage)
+
   useEffect(() => {
-    if (trialOption !== 'none') {
-      setPaymentAmount('0.00')
-      return
-    }
-    const price = billingCycle === 'monthly'
-      ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly
-      : SUBSCRIPTION_PACKAGES[selectedPackage].yearly
+    if (trialOption !== 'none') { setPaymentAmount('0.00'); return }
+    const price = billingCycle === 'monthly' ? (activePkg?.monthly_price ?? 0) : (activePkg?.yearly_price ?? 0)
     setPaymentAmount(price.toFixed(2))
-  }, [billingCycle, selectedPackage, trialOption])
+  }, [billingCycle, selectedPackage, trialOption, activePkg])
 
   useEffect(() => {
     setMounted(true)
     const supabase = createClient()
+
+    // Load packages from DB
+    ;(supabase as any)
+      .from('subscription_packages')
+      .select('id, key, label, monthly_price, yearly_price')
+      .eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }: { data: DbPackage[] | null }) => {
+        if (data && data.length > 0) {
+          setDbPackages(data)
+          setSelectedPackage(data[0].key)
+        }
+      })
 
     const checkAuth = async () => {
       try {
@@ -318,8 +324,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     try {
       const payableAmount = trialOption !== 'none' ? 0 : parseFloat(paymentAmount)
       const fullPrice = billingCycle === 'monthly'
-        ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly
-        : SUBSCRIPTION_PACKAGES[selectedPackage].yearly
+        ? (activePkg?.monthly_price ?? 0)
+        : (activePkg?.yearly_price ?? 0)
       const trialDays = TRIAL_OPTIONS.find(t => t.value === trialOption)?.days ?? 0
 
       const fd = new FormData()
@@ -1046,12 +1052,12 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PACKAGE</label>
                 <select
                   value={selectedPackage}
-                  onChange={e => setSelectedPackage(e.target.value as PackageKey)}
+                  onChange={e => setSelectedPackage(e.target.value)}
                   style={{ width: '100%', padding: '12px 16px', background: 'rgba(20,22,28,1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFFFFF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: 40 }}
                 >
-                  {(Object.entries(SUBSCRIPTION_PACKAGES) as [PackageKey, typeof SUBSCRIPTION_PACKAGES[PackageKey]][]).map(([key, pkg]) => (
-                    <option key={key} value={key}>
-                      {pkg.label} — ${billingCycle === 'monthly' ? pkg.monthly : pkg.yearly}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
+                  {dbPackages.map(pkg => (
+                    <option key={pkg.key} value={pkg.key}>
+                      {pkg.label} — ${billingCycle === 'monthly' ? pkg.monthly_price : pkg.yearly_price}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
                     </option>
                   ))}
                 </select>
@@ -1150,7 +1156,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 />
                 {trialOption !== 'none' && (
                   <div style={{ marginTop: 5, fontSize: 11, color: '#8a8e9b' }}>
-                    After trial: ${billingCycle === 'monthly' ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly : SUBSCRIPTION_PACKAGES[selectedPackage].yearly}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
+                    After trial: ${billingCycle === 'monthly' ? (activePkg?.monthly_price ?? 0) : (activePkg?.yearly_price ?? 0)}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
                   </div>
                 )}
               </div>
@@ -1175,7 +1181,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   <div style={{ fontSize: 11, color: '#8a8e9b', lineHeight: 1.6 }}>
                     No payment required. You will be charged{' '}
                     <span style={{ color: '#FFD700', fontWeight: 700 }}>
-                      ${billingCycle === 'monthly' ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly : SUBSCRIPTION_PACKAGES[selectedPackage].yearly}
+                      ${billingCycle === 'monthly' ? (activePkg?.monthly_price ?? 0) : (activePkg?.yearly_price ?? 0)}
                     </span>/{billingCycle === 'monthly' ? 'mo' : 'yr'} after your trial expires.
                   </div>
                 </div>
