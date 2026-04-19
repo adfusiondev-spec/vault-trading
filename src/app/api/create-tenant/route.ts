@@ -69,8 +69,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: roleError.message }, { status: 400 })
   }
 
-  return NextResponse.json({ 
-    success: true, 
+  // Auto-create initial subscription_payment record so tenant sees their dashboard
+  const { error: subPaymentError } = await (adminClient as any)
+    .from('subscription_payments')
+    .insert({
+      sub_admin_id: newUser.user.id,
+      amount: 0,
+      method: 'setup',
+      status: 'Pending',
+      billing_cycle: 'monthly',
+      package: 'starter',
+      trial_option: 'none',
+      trial_days: 0,
+      full_amount: 0,
+      reference: `Initial setup — ${email}`,
+    })
+
+  if (subPaymentError) {
+    console.error('Failed to create subscription payment record:', subPaymentError)
+    // Non-fatal — tenant is still created successfully
+  }
+
+  return NextResponse.json({
+    success: true,
     user_id: newUser.user.id,
     message: 'Tenant created successfully'
   })

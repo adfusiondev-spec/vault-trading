@@ -629,9 +629,11 @@ export default function SuperAdminDashboard() {
                   <input type="email" value={formData.adminEmail} onChange={e => setFormData({...formData, adminEmail: e.target.value})} placeholder="admin@domain.com" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>PASSWORD (Optional)</label>
+                  <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
+                    {editingTenant ? 'NEW PASSWORD (leave blank to keep current)' : 'PASSWORD'}
+                  </label>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input type={showPassword ? "text" : "password"} value={formData.adminPassword} onChange={e => setFormData({...formData, adminPassword: e.target.value})} placeholder="••••••••" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', paddingRight: 60 }} />
+                    <input type={showPassword ? "text" : "password"} value={formData.adminPassword} onChange={e => setFormData({...formData, adminPassword: e.target.value})} placeholder={editingTenant ? 'Enter new password to change…' : '••••••••'} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', paddingRight: 60 }} />
                     <div style={{ position: 'absolute', right: 8, display: 'flex', gap: 4 }}>
                       <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ background: 'transparent', border: 'none', color: '#8a8e9b', cursor: 'pointer', padding: 4 }}>
                         {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -641,6 +643,11 @@ export default function SuperAdminDashboard() {
                       </button>
                     </div>
                   </div>
+                  {editingTenant && (
+                    <div style={{ color: '#555', fontSize: 10, marginTop: 5 }}>
+                      Password is stored securely in Supabase Auth. Leave blank to keep the existing password unchanged.
+                    </div>
+                  )}
                 </div>
               </div>
 

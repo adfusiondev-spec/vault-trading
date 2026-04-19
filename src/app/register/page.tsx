@@ -23,19 +23,36 @@ function RegisterContent() {
 
   const searchParams = useSearchParams()
   const companySlug = searchParams.get('company')
+  const inviteToken = searchParams.get('invite')
   const [company, setCompany] = useState<{id: string, full_name: string} | null>(null)
 
   useEffect(() => {
-    // Trigger fade-in animation slightly after mount
     setMounted(true)
   }, [])
 
   useEffect(() => {
+    // Invite token flow — resolve company name from token
+    if (inviteToken) {
+      const supabase = createClient()
+      supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('invite_token', inviteToken)
+        .eq('role', 'sub_admin')
+        .single()
+        .then(({ data }) => {
+          if (data) setCompany(data)
+          else setError('Invalid invite link. Please request a new one from your broker.')
+        })
+      return
+    }
+
+    // Legacy company slug flow
     if (!companySlug) {
       router.push('/login')
       return
     }
-    
+
     const supabase = createClient()
     supabase
       .from('profiles')
@@ -45,12 +62,9 @@ function RegisterContent() {
       .single()
       .then(({ data }) => {
         if (data) setCompany(data)
-        else {
-          // Invalid company slug — redirect to main login
-          router.push('/login')
-        }
+        else router.push('/login')
       })
-  }, [companySlug, router])
+  }, [companySlug, inviteToken, router])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,24 +72,44 @@ function RegisterContent() {
     setError(null)
     setIsSubmitting(true)
 
+    // Invite token flow — uses secure server-side API
+    if (inviteToken) {
+      try {
+        const res = await fetch('/api/register-via-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, full_name: fullName, invite_token: inviteToken }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Registration failed')
+        setIsSuccess(true)
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
+
+    // Legacy company slug flow
     const supabase = createClient()
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { 
+        data: {
           full_name: fullName,
-          assigned_to_slug: companySlug // passed to handle_new_user() trigger
+          assigned_to_slug: companySlug
         }
       }
     })
-    
+
     if (error) {
       setError(error.message)
       setIsSubmitting(false)
       return
     }
-    
+
     setIsSuccess(true)
     setIsSubmitting(false)
   }
@@ -116,7 +150,7 @@ function RegisterContent() {
           </div>
           <h1 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>THE VAULT</h1>
           <p style={{ color: '#8a8e9b', fontSize: 13, letterSpacing: '0.05em' }}>
-            {isSuccess ? t.registration_complete : company ? `${t.register} — ${company.full_name}` : t.request_institutional}
+            {isSuccess ? t.registration_complete : company ? `${t.register} — ${company.full_name}` : inviteToken ? 'Verifying invite link...' : t.request_institutional}
           </p>
           <div style={{ marginTop: 12 }}><LanguageToggle /></div>
         </div>

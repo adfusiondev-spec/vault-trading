@@ -53,7 +53,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
-  const [companyProfile, setCompanyProfile] = useState<{ id: string, full_name: string } | null>(null)
+  const [companyProfile, setCompanyProfile] = useState<{ id: string, full_name: string, invite_token?: string } | null>(null)
 
   // State
   const [trades, setTrades] = useState(INITIAL_TRADES)
@@ -138,7 +138,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         if (impersonatedId || localRole === 'sub_admin') {
           const { data: company } = await supabase
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, invite_token')
             .eq('company_slug', slug)
             .eq('role', 'sub_admin')
             .single()
@@ -171,7 +171,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         if (profile.role === 'super_admin') {
           const { data: company } = await supabase
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, invite_token')
             .eq('company_slug', slug)
             .eq('role', 'sub_admin')
             .single()
@@ -188,7 +188,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
         const { data: company } = await supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id, full_name, invite_token')
           .eq('company_slug', slug)
           .eq('role', 'sub_admin')
           .single()
@@ -657,6 +657,42 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                     <Users size={16} strokeWidth={2.5} /> {t.add_client}
                   </button>
                 </div>
+
+                {/* ── Invite Link ── */}
+                {companyProfile?.invite_token && (
+                  <div style={{
+                    background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.25)',
+                    borderRadius: 8, padding: '14px 18px', marginBottom: 20,
+                    display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ color: '#FFD700', fontWeight: 700, fontSize: 12, letterSpacing: '0.05em', marginBottom: 6 }}>TRADER INVITE LINK</div>
+                      <input
+                        type="text"
+                        readOnly
+                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/register?invite=${companyProfile.invite_token}`}
+                        style={{
+                          width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,215,0,0.2)',
+                          color: '#c0c3ce', padding: '8px 12px', borderRadius: 6,
+                          fontFamily: 'monospace', fontSize: 12, outline: 'none',
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        const link = `${window.location.origin}/register?invite=${companyProfile.invite_token}`
+                        navigator.clipboard.writeText(link).then(() => alert('Invite link copied!')).catch(() => alert(link))
+                      }}
+                      style={{
+                        background: '#FFD700', color: '#000', border: 'none', borderRadius: 6,
+                        padding: '9px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 12,
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                      }}
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                )}
 
                 {/* ── Search Filter ── */}
                 <div style={{ marginBottom: 16 }}>
