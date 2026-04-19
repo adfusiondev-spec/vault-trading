@@ -520,11 +520,11 @@ export default function Dashboard() {
                  </div>
                </div>
              </div>
-             <div style={{ display: 'flex', gap: 12 }}>
-               <button onClick={()=>execTrade('buy')} style={{ flex: '1 1 50%', height: 40, background: '#26a69a', color: '#fff', fontWeight: 700, border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap', minWidth: 0 }}>
+             <div style={{ display: 'flex', gap: 10, width: 260 }}>
+               <button onClick={()=>execTrade('buy')} style={{ flex: 1, height: 44, background: '#26a69a', color: '#fff', fontWeight: 800, border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, letterSpacing: '0.03em' }}>
                  ▲ {t.buy}
                </button>
-               <button onClick={()=>execTrade('sell')} style={{ flex: '1 1 50%', height: 40, background: '#ef5350', border: 'none', color: '#fff', fontWeight: 700, borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap', minWidth: 0, transition: 'all 0.2s' }}>
+               <button onClick={()=>execTrade('sell')} style={{ flex: 1, height: 44, background: '#ef5350', color: '#fff', fontWeight: 800, border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, letterSpacing: '0.03em' }}>
                  ▼ {t.sell}
                </button>
              </div>
