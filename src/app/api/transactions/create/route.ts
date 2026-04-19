@@ -66,5 +66,22 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
+  // Notify the sub-admin of the new transaction request
+  const { data: traderProfile } = await (supabase as any)
+    .from('profiles')
+    .select('assigned_to, full_name')
+    .eq('id', user.id)
+    .single()
+
+  if (traderProfile?.assigned_to) {
+    await (supabase as any).from('notifications').insert({
+      user_id: traderProfile.assigned_to,
+      user_role: 'sub_admin',
+      title: `New ${type === 'deposit' ? 'Deposit' : 'Withdrawal'} Request`,
+      message: `${traderProfile.full_name || 'A trader'} submitted a ${type} of ${amount} ${currency}.`,
+      read: false,
+    })
+  }
+
   return NextResponse.json({ success: true, transaction: data })
 }

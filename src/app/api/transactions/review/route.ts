@@ -59,8 +59,20 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  return NextResponse.json({ 
-    success: true, 
+  // Notify the trader of the decision
+  const tx = transaction as any
+  await (supabase as any).from('notifications').insert({
+    user_id: tx.user_id,
+    user_role: 'trader',
+    title: action === 'approved' ? 'Transaction Approved' : 'Transaction Rejected',
+    message: action === 'approved'
+      ? `Your ${tx.type} of ${tx.amount} ${tx.currency} has been approved.`
+      : `Your ${tx.type} of ${tx.amount} ${tx.currency} was rejected.${admin_notes ? ' Note: ' + admin_notes : ''}`,
+    read: false,
+  })
+
+  return NextResponse.json({
+    success: true,
     message: action === 'approved' ? 'تمت الموافقة وتحديث الرصيد' : 'تم رفض الطلب'
   })
 }
