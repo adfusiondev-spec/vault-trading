@@ -314,36 +314,28 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     if (!companyProfile?.id) return alert('Error identifying company profile')
 
     setPaymentLoading(true)
-    const supabase = createClient()
     try {
-      let proofPath: string | null = null
-      if (paymentProofFile) {
-        const ext = paymentProofFile.name.split('.').pop()
-        const fileName = `${companyProfile.id}/${Date.now()}.${ext}`
-        const { error: uploadErr } = await supabase.storage.from('payment-proofs').upload(fileName, paymentProofFile)
-        if (uploadErr) throw new Error('Proof upload failed: ' + uploadErr.message)
-        proofPath = fileName
-      }
       const payableAmount = trialOption !== 'none' ? 0 : parseFloat(paymentAmount)
       const fullPrice = billingCycle === 'monthly'
         ? SUBSCRIPTION_PACKAGES[selectedPackage].monthly
         : SUBSCRIPTION_PACKAGES[selectedPackage].yearly
       const trialDays = TRIAL_OPTIONS.find(t => t.value === trialOption)?.days ?? 0
 
-      const { error } = await (supabase.from('subscription_payments') as any).insert([{
-        sub_admin_id: companyProfile.id,
-        amount: payableAmount,
-        method: paymentMethod,
-        status: 'Pending',
-        reference: `SUB-${Date.now()}`,
-        proof_url: proofPath,
-        package: selectedPackage,
-        billing_cycle: billingCycle,
-        trial_option: trialOption,
-        trial_days: trialDays,
-        full_amount: fullPrice,
-      }])
-      if (error) throw error
+      const fd = new FormData()
+      fd.append('sub_admin_id', companyProfile.id)
+      fd.append('amount', String(payableAmount))
+      fd.append('method', paymentMethod)
+      fd.append('reference', `SUB-${Date.now()}`)
+      fd.append('package', selectedPackage)
+      fd.append('billing_cycle', billingCycle)
+      fd.append('trial_option', trialOption)
+      fd.append('trial_days', String(trialDays))
+      fd.append('full_amount', String(fullPrice))
+      if (paymentProofFile) fd.append('proof', paymentProofFile)
+
+      const res = await fetch('/api/subscription-payment', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Request failed')
       const msg = trialOption !== 'none'
         ? `Trial period (${TRIAL_OPTIONS.find(t => t.value === trialOption)?.label}) request submitted!`
         : 'Subscription payment submitted successfully!'
