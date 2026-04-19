@@ -14,6 +14,7 @@ import { useTransactions } from '@/hooks/useTransactions'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { useResponsive } from '@/hooks/useResponsive'
 
 const CandlestickChart = dynamic(() => import('@/components/CandlestickChart'), { ssr: false })
 
@@ -125,6 +126,8 @@ function ensureFlashStyles() {
 export default function Dashboard() {
   const router = useRouter()
   const { t } = useTranslation()
+  const { isMobile } = useResponsive()
+  const [mobileView, setMobileView] = useState<'chart' | 'watchlist' | 'account'>('chart')
   const [mounted, setMounted] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [wal, setWal] = useState<any>(null)
@@ -352,7 +355,7 @@ export default function Dashboard() {
   if (!mounted) return null
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#131722', color: '#d1d4dc', overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: '#131722', color: '#d1d4dc', overflow: isMobile ? 'visible' : 'hidden', fontFamily: "'Inter', sans-serif" }}>
       
       {/* TOP HEADER */}
       <div style={{ height: 50, borderBottom: '1px solid #2a2e3b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', background: '#1a1e2e' }}>
@@ -396,14 +399,18 @@ export default function Dashboard() {
             <User size={14} color="#787b86" />
           </div>
           <div style={{ width: 1, height: 24, background: '#2a2e3b' }} />
-          <button onClick={async () => { await supabase.auth.signOut(); localStorage.clear(); router.push('/login') }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', color: '#787b86', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-            <LogOut size={14} /> {t.logout}
-          </button>
-          <LanguageToggle />
+          {!isMobile && (
+            <button onClick={async () => { await supabase.auth.signOut(); localStorage.clear(); router.push('/login') }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', color: '#787b86', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+              <LogOut size={14} /> {t.logout}
+            </button>
+          )}
+          {!isMobile && <LanguageToggle />}
           <div style={{ display: 'flex', gap: 8, marginLeft: 8 }}>
-             <button type="button" onClick={() => { setModalType('withdrawal'); setModalOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', padding: '4px 12px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-               <ArrowUpToLine size={12} /> {t.withdrawal}
-             </button>
+             {!isMobile && (
+               <button type="button" onClick={() => { setModalType('withdrawal'); setModalOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', padding: '4px 12px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                 <ArrowUpToLine size={12} /> {t.withdrawal}
+               </button>
+             )}
              <button type="button" onClick={() => { setModalType('deposit'); setModalOpen(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFD700', border: 'none', color: '#000', padding: '4px 16px', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                <ArrowDownToLine size={12} /> {t.deposit}
              </button>
@@ -411,10 +418,24 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        
+      {/* Mobile bottom nav */}
+      {isMobile && (
+        <div style={{ display: 'flex', borderBottom: '1px solid #2a2e3b', background: '#1a1e2e', flexShrink: 0 }}>
+          {(['watchlist', 'chart', 'account'] as const).map(v => (
+            <button key={v} onClick={() => setMobileView(v)} style={{
+              flex: 1, padding: '10px 0', background: 'transparent', border: 'none', cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+              color: mobileView === v ? '#FFD700' : '#787b86',
+              borderBottom: mobileView === v ? '2px solid #FFD700' : '2px solid transparent',
+            }}>{v}</button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ flex: 1, display: 'flex', overflow: isMobile ? 'visible' : 'hidden' }}>
+
         {/* LEFT SIDEBAR: WATCHLIST */}
-        <div style={{ width: 300, background: '#131722', borderRight: '1px solid #2a2e3b', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: isMobile ? '100%' : 300, background: '#131722', borderRight: isMobile ? 'none' : '1px solid #2a2e3b', display: isMobile ? (mobileView === 'watchlist' ? 'flex' : 'none') : 'flex', flexDirection: 'column', overflowY: isMobile ? 'auto' : 'visible' }}>
           <div style={{ padding: '8px 16px', borderBottom: '1px solid #1e222d' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#FFD700' }}>Watchlist</span>
@@ -466,7 +487,7 @@ export default function Dashboard() {
         </div>
 
         {/* MIDDLE SECTION: CHART + TRADING + HISTORY */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: '1px solid #2a2e3b' }}>
+        <div style={{ flex: 1, display: isMobile ? (mobileView === 'chart' ? 'flex' : 'none') : 'flex', flexDirection: 'column', minWidth: 0, borderRight: isMobile ? 'none' : '1px solid #2a2e3b' }}>
           
           {/* Chart Header */}
           <div style={{ padding: '0 16px', height: 48, borderBottom: '1px solid #2a2e3b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#131722' }}>
@@ -498,29 +519,29 @@ export default function Dashboard() {
           </div>
 
           {/* Trading Action Bar */}
-          <div style={{ padding: '16px', background: '#1a1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2a2e3b' }}>
-             <div style={{ display: 'flex', gap: 32 }}>
-               <div>
+          <div style={{ padding: isMobile ? '12px' : '16px', background: '#1a1e2e', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', borderBottom: '1px solid #2a2e3b', gap: isMobile ? 12 : 0 }}>
+             <div style={{ display: 'flex', gap: isMobile ? 12 : 32, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+               <div style={{ flex: isMobile ? '1 1 auto' : 'unset' }}>
                  <div style={{ fontSize: 10, color: '#787b86', marginBottom: 6, fontWeight: 600 }}>ASSET</div>
-                 <div style={{ background: '#131722', border: '1px solid #2a2e3b', padding: '8px 12px', borderRadius: 4, color: '#fff', fontSize: 13, minWidth: 120 }}>
+                 <div style={{ background: '#131722', border: '1px solid #2a2e3b', padding: '8px 12px', borderRadius: 4, color: '#fff', fontSize: 13, minWidth: 100 }}>
                    {BINANCE_ASSETS.find(x=>x.symbol===symbol)?.short || MARKET_GROUPS.flatMap(x=>x.items).find(x=>x.symbol===symbol)?.short}
                  </div>
                </div>
-               <div>
-                 <div style={{ fontSize: 10, color: '#787b86', marginBottom: 6, fontWeight: 600 }}>MARKET PRICE</div>
-                 <div style={{ padding: '8px 0', color: '#FFD700', fontSize: 14, fontWeight: 700, minWidth: 80 }}>
-                   {fmtPrice(liveCurrent)} <span style={{ fontSize: 10, color: '#787b86', fontWeight: 400 }}></span>
+               <div style={{ flex: isMobile ? '1 1 auto' : 'unset' }}>
+                 <div style={{ fontSize: 10, color: '#787b86', marginBottom: 6, fontWeight: 600 }}>PRICE</div>
+                 <div style={{ padding: '8px 0', color: '#FFD700', fontSize: 14, fontWeight: 700 }}>
+                   {fmtPrice(liveCurrent)}
                  </div>
                </div>
-               <div>
+               <div style={{ flex: isMobile ? '1 1 100%' : 'unset' }}>
                  <div style={{ fontSize: 10, color: '#787b86', marginBottom: 6, fontWeight: 600 }}>AMOUNT (USD)</div>
                  <div style={{ position: 'relative' }}>
                    <span style={{ position: 'absolute', left: 10, top: 9, color: '#787b86', fontSize: 13 }}>$</span>
-                   <input type="number" placeholder="0.00" value={tradeAmt} onChange={e=>setTradeAmt(e.target.value)} style={{ background: '#131722', outline: 'none', border: '1px solid #2a2e3b', padding: '8px 12px 8px 24px', borderRadius: 4, color: '#d1d4dc', fontSize: 13, width: 140 }} />
+                   <input type="number" placeholder="0.00" value={tradeAmt} onChange={e=>setTradeAmt(e.target.value)} style={{ background: '#131722', outline: 'none', border: '1px solid #2a2e3b', padding: '8px 12px 8px 24px', borderRadius: 4, color: '#d1d4dc', fontSize: 13, width: isMobile ? '100%' : 140 }} />
                  </div>
                </div>
              </div>
-             <div style={{ display: 'flex', gap: 10, width: 260 }}>
+             <div style={{ display: 'flex', gap: 10, width: isMobile ? '100%' : 260 }}>
                <button onClick={()=>execTrade('buy')} style={{ flex: 1, height: 44, background: '#26a69a', color: '#fff', fontWeight: 800, border: 'none', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, letterSpacing: '0.03em' }}>
                  ▲ {t.buy}
                </button>
@@ -690,7 +711,7 @@ export default function Dashboard() {
         </div>
 
         {/* RIGHT SIDEBAR: ACCOUNT & DEPOSIT */}
-        <div style={{ width: 320, background: '#1a1e2e', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <div style={{ width: isMobile ? '100%' : 320, background: '#1a1e2e', display: isMobile ? (mobileView === 'account' ? 'flex' : 'none') : 'flex', flexDirection: 'column', position: 'relative', overflowY: isMobile ? 'auto' : 'visible' }}>
           
           <div style={{ padding: 20, borderBottom: '1px solid #2a2e3b' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>

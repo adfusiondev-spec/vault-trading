@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Activity, DollarSign, LogOut, ShieldCheck, AlertCircle, Check, X, Bell, Eye, Settings, CreditCard } from 'lucide-react'
+import { Users, Activity, DollarSign, LogOut, ShieldCheck, AlertCircle, Check, X, Bell, Eye, Settings, CreditCard, Menu } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingTransactions } from '@/hooks/usePendingTransactions'
 import { useMarketData } from '@/hooks/useMarketData'
 
 import { useNotifications } from '@/hooks/useNotifications'
 import { useTranslation } from '@/lib/i18n'
+import { useResponsive } from '@/hooks/useResponsive'
 import { LanguageToggle } from '@/components/LanguageToggle'
 
 // Mock Data
@@ -35,6 +36,8 @@ type BillingCycle = 'monthly' | 'yearly'
 export default function SubAdminDashboard({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter()
   const { t } = useTranslation()
+  const { isMobile } = useResponsive()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const { slug } = React.use(params)
   const { prices } = useMarketData()
 
@@ -467,7 +470,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   return (
     <div style={{
       minHeight: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
-      background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'auto'
+      background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff',
+      overflow: isMobile ? 'visible' : 'auto'
     }}>
       
       {/* ── Top Navigation Bar ── */}
@@ -477,23 +481,30 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         padding: '0 24px', background: 'rgba(11,14,17,0.95)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {isMobile && (
+            <button onClick={() => setSidebarOpen(o => !o)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', padding: 4 }}>
+              <Menu size={22} />
+            </button>
+          )}
           <div style={{
             width: 32, height: 32, borderRadius: 8, background: '#FFD700',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
           }}>
             <ShieldCheck size={20} strokeWidth={2.5} color="#000" />
           </div>
           <div>
-            <h1 style={{ fontWeight: 800, fontSize: 16, letterSpacing: '0.1em', margin: 0 }}>{companyProfile?.full_name || 'THE VAULT'}</h1>
+            <h1 style={{ fontWeight: 800, fontSize: isMobile ? 13 : 16, letterSpacing: '0.1em', margin: 0 }}>{companyProfile?.full_name || 'THE VAULT'}</h1>
             <span style={{ color: 'var(--gold, #FFD700)', fontSize: 10, letterSpacing: '0.05em', fontWeight: 600 }}>CRM SYSTEM · SUB-ADMIN</span>
           </div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: 0.7 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#26a69a' }} />
-            <span style={{ fontSize: 12, letterSpacing: '0.05em' }}>SYSTEM ONLINE</span>
-          </div>
+          {!isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: 0.7 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#26a69a' }} />
+              <span style={{ fontSize: 12, letterSpacing: '0.05em' }}>SYSTEM ONLINE</span>
+            </div>
+          )}
 
           <div style={{ position: 'relative' }}>
             <div onClick={() => setShowNotifications(!showNotifications)} style={{ position: 'relative', cursor: 'pointer' }}>
@@ -537,13 +548,30 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, height: 0, minHeight: 0 }}>
-        
+      <div style={{ display: 'flex', flex: 1, height: isMobile ? 'auto' : 0, minHeight: 0, position: 'relative' }}>
+
+        {/* Mobile overlay backdrop */}
+        {isMobile && sidebarOpen && (
+          <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }} />
+        )}
+
         {/* ── Sidebar CRM Navigation ── */}
         <div style={{
-          width: 240, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',
-          display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px'
+          width: 240, flexShrink: 0, borderRight: '1px solid var(--border)', background: isMobile ? '#0b0e11' : 'rgba(255,255,255,0.01)',
+          display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px',
+          ...(isMobile ? {
+            position: 'fixed', top: 60, left: 0, bottom: 0, zIndex: 50,
+            transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+            transition: 'transform 0.25s ease',
+          } : {})
         }}>
+          {isMobile && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <button onClick={() => setSidebarOpen(false)} style={{ background: 'transparent', border: 'none', color: '#787b86', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+          )}
           {[
             { id: 'monitor', icon: Activity, label: t.trade_monitor },
             { id: 'leads', icon: Users, label: t.clients },
@@ -555,7 +583,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id as any)}
+                onClick={() => { setActiveTab(item.id as any); setSidebarOpen(false) }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
                   borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left',
@@ -572,11 +600,11 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         </div>
 
         {/* ── Main CRM Area ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#06080a', overflowY: 'auto', minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#06080a', overflowY: 'auto', minHeight: 0, minWidth: 0 }}>
           
           {/* Top Summary Bar */}
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, padding: 24, borderBottom: '1px solid var(--border)'
+            display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: isMobile ? 12 : 20, padding: isMobile ? 16 : 24, borderBottom: '1px solid var(--border)'
           }}>
             <SummaryCard title="Total Clients" value={traders.length.toString()} icon={Users} color="#fff" />
             <SummaryCard title="Active Trades" value={trades.length.toString()} icon={Activity} color="#FFD700" />
