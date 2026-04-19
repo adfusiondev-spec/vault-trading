@@ -96,9 +96,12 @@ export function FinancialDesk() {
                 <td style={{ padding: '12px 16px' }}>{fin.method}</td>
                 <td style={{ padding: '12px 16px' }}>
                   {fin.proof_url ? (
-                    <a href={fin.proof_url} target="_blank" rel="noopener noreferrer" style={{ background: 'transparent', border: '1px solid #787b86', display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 10, cursor: 'pointer', textDecoration: 'none' }}>
+                    <button onClick={async () => {
+                      const { data } = await createClient().storage.from('payment-proofs').createSignedUrl(fin.proof_url, 120)
+                      if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                    }} style={{ background: 'transparent', border: '1px solid #787b86', display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 10, cursor: 'pointer' }}>
                       <Eye size={12}/> View Proof
-                    </a>
+                    </button>
                   ) : <span style={{ color: '#555', fontSize: 10 }}>No Receipt</span>}
                 </td>
                 <td style={{ padding: '12px 16px', textAlign: 'right' }}>

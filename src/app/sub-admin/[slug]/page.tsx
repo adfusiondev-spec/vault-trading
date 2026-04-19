@@ -886,9 +886,13 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                           <td style={{ padding: '12px 16px', color: '#c0c3ce' }}>{sp.method || '—'}</td>
                           <td style={{ padding: '12px 16px' }}>
                             {sp.proof_url ? (
-                              <a href={sp.proof_url} target="_blank" rel="noopener noreferrer" style={{ background: 'transparent', border: '1px solid #787b86', display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 10, cursor: 'pointer', textDecoration: 'none' }}>
+                              <button onClick={async () => {
+                                const sb = createClient()
+                                const { data } = await sb.storage.from('payment-proofs').createSignedUrl(sp.proof_url, 120)
+                                if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                              }} style={{ background: 'transparent', border: '1px solid #787b86', display: 'inline-flex', alignItems: 'center', gap: 6, color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 10, cursor: 'pointer' }}>
                                 <Eye size={12} /> View
-                              </a>
+                              </button>
                             ) : <span style={{ color: '#555', fontSize: 10 }}>No Receipt</span>}
                           </td>
                           <td style={{ padding: '12px 16px', textAlign: 'right' }}>
