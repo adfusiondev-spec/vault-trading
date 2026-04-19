@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Crown, Building2, Globe, Database, LogOut, ShieldCheck, ShieldAlert, Check, Plus, DollarSign, AlertTriangle, Key, X, Settings2, Settings, Power, Play, Trash2, Eye, EyeOff, Copy, Menu } from 'lucide-react'
+import { Crown, Building2, Globe, Database, LogOut, ShieldCheck, ShieldAlert, Check, Plus, DollarSign, AlertTriangle, Key, X, Settings2, Settings, Power, Play, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { FinancialDesk } from '@/components/admin/FinancialDesk'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -11,16 +11,13 @@ import PaymentSettingsPanel from '@/components/admin/PaymentSettingsPanel'
 import { PackageSettings } from '@/components/admin/PackageSettings'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { useResponsive } from '@/hooks/useResponsive'
 
 
 
 export default function SuperAdminDashboard() {
   const router = useRouter()
   const { t } = useTranslation()
-  const { isMobile } = useResponsive()
   const [mounted, setMounted] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'tenants' | 'system' | 'audit' | 'financial' | 'packages' | 'payment-settings'>('tenants')
   // Auth State
   const [loading, setLoading] = useState(true)
@@ -309,9 +306,8 @@ export default function SuperAdminDashboard() {
 
   return (
     <div style={{
-      minHeight: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
-      background: '#040608', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff',
-      overflow: isMobile ? 'visible' : 'hidden'
+      height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
+      background: '#040608', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'hidden'
     }}>
       
       {/* ── Top Navigation Bar ── */}
@@ -321,30 +317,23 @@ export default function SuperAdminDashboard() {
         padding: '0 24px', background: 'rgba(4,6,8,0.95)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {isMobile && (
-            <button onClick={() => setSidebarOpen(o => !o)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', padding: 4 }}>
-              <Menu size={22} />
-            </button>
-          )}
           <div style={{
             width: 32, height: 32, borderRadius: 8, background: '#FFD700',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>
             <Crown size={20} strokeWidth={2.5} color="#000" />
           </div>
           <div>
-            <h1 style={{ fontWeight: 800, fontSize: isMobile ? 13 : 16, letterSpacing: '0.1em', margin: 0 }}>PLATFORM CRM</h1>
+            <h1 style={{ fontWeight: 800, fontSize: 16, letterSpacing: '0.1em', margin: 0 }}>PLATFORM CRM SYSTEM</h1>
             <span style={{ color: 'var(--gold, #FFD700)', fontSize: 10, letterSpacing: '0.05em', fontWeight: 600 }}>MASTER CONTROL · SAAS ADMIN</span>
           </div>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          {!isMobile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.2)', padding: '6px 12px', borderRadius: 4 }}>
-              <Globe size={14} color="#FFD700" />
-              <span style={{ fontSize: 12, letterSpacing: '0.05em', color: '#FFD700', fontWeight: 600 }}>HQ OVERSIGHT ACTIVATED</span>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.2)', padding: '6px 12px', borderRadius: 4 }}>
+            <Globe size={14} color="#FFD700" />
+            <span style={{ fontSize: 12, letterSpacing: '0.05em', color: '#FFD700', fontWeight: 600 }}>HQ OVERSIGHT ACTIVATED</span>
+          </div>
 
           <div style={{ position: 'relative' }}>
             <div onClick={() => setShowNotifications(!showNotifications)} style={{ position: 'relative', cursor: 'pointer' }}>
@@ -380,30 +369,13 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: isMobile ? 'visible' : 'hidden', position: 'relative' }}>
-
-        {/* Mobile overlay backdrop */}
-        {isMobile && sidebarOpen && (
-          <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }} />
-        )}
-
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        
         {/* ── Sidebar CRM Navigation ── */}
         <div style={{
-          width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', background: isMobile ? '#0b0e11' : 'rgba(255,255,255,0.01)',
-          display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px',
-          ...(isMobile ? {
-            position: 'fixed', top: 60, left: 0, bottom: 0, zIndex: 50,
-            transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-            transition: 'transform 0.25s ease',
-          } : {})
+          width: 200, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',
+          display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px'
         }}>
-          {isMobile && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-              <button onClick={() => setSidebarOpen(false)} style={{ background: 'transparent', border: 'none', color: '#787b86', cursor: 'pointer' }}>
-                <X size={18} />
-              </button>
-            </div>
-          )}
           {[
             { id: 'tenants', icon: Building2, label: t.leasing_companies },
             { id: 'system', icon: Database, label: 'Global Architecture' },
@@ -417,7 +389,7 @@ export default function SuperAdminDashboard() {
             return (
               <button
                 key={item.id}
-                onClick={() => { setActiveTab(item.id as any); setSidebarOpen(false) }}
+                onClick={() => setActiveTab(item.id as any)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
                   borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left',
@@ -434,11 +406,11 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* ── Main CRM Area ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#020304', overflowY: 'auto', minWidth: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#020304', overflowY: 'auto' }}>
           
           {/* Top Summary Bar */}
           <div style={{
-            display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? 12 : 20, padding: isMobile ? 16 : 24, borderBottom: '1px solid var(--border)'
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, padding: 24, borderBottom: '1px solid var(--border)'
           }}>
             <SummaryCard title="Global System Volume" value="$28.5B" icon={Globe} color="#FFD700" />
             <SummaryCard title="Active Tenants" value={companies.length.toString()} icon={Building2} color="#fff" />
