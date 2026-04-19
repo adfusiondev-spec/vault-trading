@@ -693,9 +693,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                         const balance = Number((trader.wallets as any)?.[0]?.balance || 0)
                         const isVisible = visiblePasswords.has(trader.id)
                         const regDate = trader.created_at ? new Date(trader.created_at).toLocaleDateString('en-GB') : '—'
-                        // Password: prefer DB value, fall back to localStorage
-                        const localPw = typeof window !== 'undefined' ? localStorage.getItem(`vault_pw_${trader.id}`) : null
-                        const passwordDisplay = localPw || '—'
+                        const passwordDisplay = '—'
                         return (
                           <tr
                             key={trader.id}
