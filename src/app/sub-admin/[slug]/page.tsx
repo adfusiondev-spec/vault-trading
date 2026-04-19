@@ -310,7 +310,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   const handleSubscriptionPayment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!paymentMethod) return alert('Please select a payment method')
+    const isTrial = trialOption !== 'none'
+    if (!isTrial && !paymentMethod) return alert('Please select a payment method')
     if (!companyProfile?.id) return alert('Error identifying company profile')
 
     setPaymentLoading(true)
@@ -1064,7 +1065,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </select>
               </div>
 
-              {/* PAYMENT METHOD */}
+              {/* PAYMENT METHOD — hidden for trial */}
+              {trialOption === 'none' && (
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PAYMENT METHOD</label>
                 <select
@@ -1079,9 +1081,10 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   <option value="bank_transfer">Bank Transfer</option>
                 </select>
               </div>
+              )}
 
-              {/* Dynamic payment details panel */}
-              {paymentMethod === 'bank_transfer' && (
+              {/* Dynamic payment details panel — hidden for trial */}
+              {trialOption === 'none' && paymentMethod === 'bank_transfer' && (
                 <div style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8, padding: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', marginBottom: 10, letterSpacing: '0.05em' }}>BANK TRANSFER DETAILS</div>
                   <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
@@ -1098,7 +1101,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </div>
               )}
 
-              {paymentMethod === 'crypto_usdt' && (
+              {trialOption === 'none' && paymentMethod === 'crypto_usdt' && (
                 <div style={{ background: 'rgba(38,166,154,0.05)', border: '1px solid rgba(38,166,154,0.2)', borderRadius: 8, padding: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#26a69a', marginBottom: 10, letterSpacing: '0.05em' }}>USDT (TRC-20) DETAILS</div>
                   <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
@@ -1113,7 +1116,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </div>
               )}
 
-              {paymentMethod === 'crypto_btc' && (
+              {trialOption === 'none' && paymentMethod === 'crypto_btc' && (
                 <div style={{ background: 'rgba(255,152,0,0.05)', border: '1px solid rgba(255,152,0,0.2)', borderRadius: 8, padding: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#FF9800', marginBottom: 10, letterSpacing: '0.05em' }}>BITCOIN (BTC) DETAILS</div>
                   <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
@@ -1176,11 +1179,11 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
               <button
                 type="submit"
-                disabled={paymentLoading || !paymentMethod || !paymentProofFile}
+                disabled={paymentLoading || (trialOption === 'none' && (!paymentMethod || !paymentProofFile))}
                 style={{
                   width: '100%', padding: 14, marginTop: 4, background: '#FFD700', border: 'none',
                   borderRadius: 8, color: '#000', fontWeight: 800, fontSize: 14, cursor: 'pointer',
-                  opacity: (paymentLoading || !paymentMethod || !paymentProofFile) ? 0.5 : 1
+                  opacity: (paymentLoading || (trialOption === 'none' && (!paymentMethod || !paymentProofFile))) ? 0.5 : 1
                 }}
               >
                 {paymentLoading ? 'SUBMITTING...' : 'SUBMIT PAYMENT'}
