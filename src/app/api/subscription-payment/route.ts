@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
   const full_amount = parseFloat(formData.get('full_amount') as string)
   const proof_file = formData.get('proof') as File | null
 
-  if (!sub_admin_id || !method) {
+  const isTrial = trial_option && trial_option !== 'none'
+  if (!sub_admin_id || (!isTrial && !method)) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
