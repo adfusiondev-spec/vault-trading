@@ -1037,8 +1037,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </select>
               </div>
 
-              {/* PACKAGE */}
-              <div>
+              {/* PACKAGE — hidden for trial */}
+              {trialOption === 'none' && <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PACKAGE</label>
                 <select
                   value={selectedPackage}
@@ -1051,7 +1051,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                     </option>
                   ))}
                 </select>
-              </div>
+              </div>}
 
               {/* TRIAL PERIOD */}
               <div>
