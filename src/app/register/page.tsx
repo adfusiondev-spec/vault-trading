@@ -148,7 +148,7 @@ function RegisterContent() {
           }}>
             <ShieldCheck size={26} strokeWidth={2.5} color="#000" />
           </div>
-          <h1 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>THE VAULT</h1>
+          <h1 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>Nokhba</h1>
           <p style={{ color: '#8a8e9b', fontSize: 13, letterSpacing: '0.05em' }}>
             {isSuccess ? t.registration_complete : company ? `${t.register} — ${company.full_name}` : inviteToken ? 'Verifying invite link...' : t.request_institutional}
           </p>

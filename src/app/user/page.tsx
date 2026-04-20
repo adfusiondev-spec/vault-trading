@@ -155,7 +155,7 @@ export default function Dashboard() {
     btc_address: '1A2b3C4d5E6f7G8h9I0jK1L2m3N4o5P6q7',
     btc_is_active: true,
     bank_name: 'CIH Bank',
-    bank_account_holder: 'The Vault Trading',
+    bank_account_holder: 'Nokhba Trading',
     bank_rib: '230 780 4567890123456789 12',
     bank_is_active: true,
   })
@@ -360,7 +360,7 @@ export default function Dashboard() {
           <div style={{ background: '#FFD700', borderRadius: 4, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
-          <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.05em', color: '#fff' }}>THE VAULT</span>
+          <span style={{ fontWeight: 800, fontSize: 13, letterSpacing: '0.05em', color: '#fff' }}>Nokhba</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: connected ? '#26a69a' : '#ef5350' }}>

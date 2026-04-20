@@ -14,8 +14,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "The Vault | Premium Trading Platform",
-  description: "Secure, high-performance trading platform for modern investors.",
+  title: "Nokhba | Secure Platform CRM System",
+  description: "Nokhba | Secure Platform CRM System",
 };
 
 export default function RootLayout({

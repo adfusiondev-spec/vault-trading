@@ -108,7 +108,7 @@ function LoginForm() {
           }}>
             <ShieldCheck size={26} strokeWidth={2.5} color="#000" />
           </div>
-          <h1 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>THE VAULT</h1>
+          <h1 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>Nokhba</h1>
           <p style={{ color: '#8a8e9b', fontSize: 13, letterSpacing: '0.05em' }}>{t.secure_trading}</p>
           <div style={{ marginTop: 12 }}><LanguageToggle /></div>
         </div>

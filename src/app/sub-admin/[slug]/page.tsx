@@ -484,7 +484,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             <ShieldCheck size={20} strokeWidth={2.5} color="#000" />
           </div>
           <div>
-            <h1 style={{ fontWeight: 800, fontSize: 16, letterSpacing: '0.1em', margin: 0 }}>{companyProfile?.full_name || 'THE VAULT'}</h1>
+            <h1 style={{ fontWeight: 800, fontSize: 16, letterSpacing: '0.1em', margin: 0 }}>{companyProfile?.full_name || 'Nokhba'}</h1>
             <span style={{ color: 'var(--gold, #FFD700)', fontSize: 10, letterSpacing: '0.05em', fontWeight: 600 }}>CRM SYSTEM · SUB-ADMIN</span>
           </div>
         </div>
@@ -1151,7 +1151,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', marginBottom: 10, letterSpacing: '0.05em' }}>BANK TRANSFER DETAILS</div>
                   <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
                     <div><span style={{ color: '#8a8e9b' }}>Bank:</span> Al Rajhi Bank</div>
-                    <div><span style={{ color: '#8a8e9b' }}>Account Name:</span> The Vault Platform LLC</div>
+                    <div><span style={{ color: '#8a8e9b' }}>Account Name:</span> Nokhba Platform LLC</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ color: '#8a8e9b' }}>IBAN:</span>
                       <span style={{ fontFamily: 'monospace', fontSize: 11 }}>SA1234567890123456789012</span>

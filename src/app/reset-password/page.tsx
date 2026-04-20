@@ -46,7 +46,7 @@ export default function ResetPasswordPage() {
             <ShieldCheck size={26} color="#000" strokeWidth={2.5} />
           </div>
           <h1 style={{ color: '#fff', fontWeight: 800, fontSize: 20, letterSpacing: '0.1em', margin: 0 }}>RESET PASSWORD</h1>
-          <p style={{ color: '#8a8e9b', fontSize: 13, marginTop: 8 }}>THE VAULT — SECURE PORTAL</p>
+          <p style={{ color: '#8a8e9b', fontSize: 13, marginTop: 8 }}>Nokhba — SECURE PORTAL</p>
         </div>
 
         {done ? (

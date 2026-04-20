@@ -19,7 +19,7 @@ export const ar: Record<TranslationKey, string> = {
   already_have_account: 'لديك حساب بالفعل؟',
   request_access_link: 'طلب الوصول',
   access_vault_link: 'دخول الخزنة',
-  secure_trading: 'منصة تداول مؤسسية آمنة',
+  secure_trading: 'نظام CRM لمنصة آمنة',
   registration_complete: 'اكتمل التسجيل',
   request_institutional: 'طلب وصول مؤسسي',
   check_email: 'تحقق من بريدك',

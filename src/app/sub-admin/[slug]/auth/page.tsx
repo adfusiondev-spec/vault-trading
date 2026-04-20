@@ -77,7 +77,7 @@ export default function TenantAuthPage() {
           <div style={{ width: 48, height: 48, background: '#FFD700', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <ShieldCheck size={26} color="#000" strokeWidth={2.5} />
           </div>
-          <h1 style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: '0.1em', margin: 0 }}>THE VAULT</h1>
+          <h1 style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: '0.1em', margin: 0 }}>Nokhba</h1>
           <p style={{ color: '#FFD700', fontSize: 12, marginTop: 6, letterSpacing: '0.05em', fontWeight: 600 }}>/{slug}</p>
           <p style={{ color: '#8a8e9b', fontSize: 12, marginTop: 4 }}>{mode === 'signin' ? 'Sign in to your account' : 'Create a new account'}</p>
         </div>
