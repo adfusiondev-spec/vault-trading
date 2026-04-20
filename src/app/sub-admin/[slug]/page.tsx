@@ -1097,7 +1097,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 >
                   {BILLING_CYCLES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
-              </div>
+              </div>}
 
               {/* PACKAGE — hidden for trial */}
               {trialOption === 'none' && <div>
