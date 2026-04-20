@@ -396,7 +396,7 @@ export default function Dashboard() {
             <User size={14} color="#787b86" />
           </div>
           <div style={{ width: 1, height: 24, background: '#2a2e3b' }} />
-          <button onClick={async () => { await supabase.auth.signOut(); localStorage.clear(); router.push('/login') }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: 'none', color: '#787b86', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={async () => { await supabase.auth.signOut(); localStorage.clear(); router.push('/login') }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', borderRadius: 6, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.3px', transition: 'all 0.2s ease' }}>
             <LogOut size={14} /> {t.logout}
           </button>
           <LanguageToggle />
