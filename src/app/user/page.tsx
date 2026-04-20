@@ -351,18 +351,11 @@ export default function Dashboard() {
             .then(r => r.json())
             .then(({ settings }) => { if (settings) setCompanySettings(settings) })
             .catch(() => {})
-          // Fetch sub-admin's allowed_markets to filter watchlist + guard trades
-          if ((p as any).assigned_to) {
-            const { data: subAdmin } = await supabase
-              .from('profiles')
-              .select('allowed_markets')
-              .eq('id', (p as any).assigned_to)
-              .single()
-            if ((subAdmin as any)?.allowed_markets?.length > 0) {
-              setAllowedMarkets((subAdmin as any).allowed_markets as string[])
-            } else {
-              setAllowedMarkets(['crypto', 'forex', 'commodities', 'global_indices', 'saudi_indices'])
-            }
+          // Fetch allowed markets via secure API route (bypasses RLS)
+          const marketsRes = await fetch('/api/trader-markets')
+          const marketsData = await marketsRes.json()
+          if (marketsData.allowed_markets) {
+            setAllowedMarkets(marketsData.allowed_markets)
           }
         }
       } else router.push('/login')
