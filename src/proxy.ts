@@ -31,13 +31,6 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Master Bypass Enforced
-  if (user?.email === 'admin@thevault.io') {
-    if (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/user' || request.nextUrl.pathname === '/sub-admin') {
-      return NextResponse.rewrite(new URL('/admin', request.url))
-    }
-  }
-
   return response
 }
 

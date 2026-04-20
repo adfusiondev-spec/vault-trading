@@ -64,13 +64,6 @@ export default function SuperAdminDashboard() {
 
         const { data: profile } = await supabase.from('profiles').select('role, company_slug').eq('id', session.user.id).single()
 
-        // Master Override
-        if (session.user.email === 'admin@thevault.io') {
-          setIsAuthorized(true)
-          setLoading(false)
-          return
-        }
-
         if (!profile || profile.role !== 'super_admin') {
           if (profile?.role === 'trader' || profile?.role === 'user') router.push('/user')
           else if (profile?.role === 'sub_admin') {
