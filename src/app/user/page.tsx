@@ -53,6 +53,7 @@ const BINANCE_ASSETS = [
 export const MARKET_GROUPS = [
   {
     category: 'PRECIOUS METALS',
+    marketKey: 'commodities',
     items: [
       { symbol: 'XAUUSD', label: 'Gold',            short: 'XAU/USD', base: 2450.51  },
       { symbol: 'XAGUSD', label: 'Silver',          short: 'XAG/USD', base: 31.20    },
@@ -62,6 +63,7 @@ export const MARKET_GROUPS = [
   },
   {
     category: 'ENERGY',
+    marketKey: 'commodities',
     items: [
       { symbol: 'WTIUSD',  label: 'Crude Oil (WTI)',  short: 'WTI/USD',  base: 82.38 },
       { symbol: 'BRTUSD',  label: 'Brent Crude',      short: 'BRT/USD',  base: 85.47 },
@@ -71,6 +73,7 @@ export const MARKET_GROUPS = [
   },
   {
     category: 'FX · MAJORS',
+    marketKey: 'forex',
     items: [
       { symbol: 'EURUSD', label: 'Euro / US Dollar',      short: 'EUR/USD', base: 1.08 },
       { symbol: 'GBPUSD', label: 'Pound / US Dollar',     short: 'GBP/USD', base: 1.27 },
@@ -80,6 +83,7 @@ export const MARKET_GROUPS = [
   },
   {
     category: 'FX · MINORS',
+    marketKey: 'forex',
     items: [
       { symbol: 'EURGBP', label: 'Euro / Pound',          short: 'EUR/GBP', base: 0.85600 },
       { symbol: 'EURJPY', label: 'Euro / Yen',            short: 'EUR/JPY', base: 163.800 },
@@ -88,6 +92,7 @@ export const MARKET_GROUPS = [
   },
   {
     category: 'SAUDI & REGIONAL',
+    marketKey: 'saudi_indices',
     items: [
       { symbol: 'TASI',    label: 'Tadawul All Share',       short: 'TASI',    base: 12450  },
       { symbol: 'ARAMCO',  label: 'Saudi Aramco',            short: 'ARAMCO',  base: 29.40  },
@@ -101,6 +106,7 @@ export const MARKET_GROUPS = [
   },
   {
     category: 'GLOBAL INDICES',
+    marketKey: 'global_indices',
     items: [
       { symbol: 'US30',   label: 'Wall Street 30',  short: 'US30',   base: 39500.00 },
       { symbol: 'US500',  label: 'US SPX 500',      short: 'US500',  base: 5250.00  },
@@ -110,6 +116,7 @@ export const MARKET_GROUPS = [
   },
   {
     category: 'GLOBAL STOCKS',
+    marketKey: 'global_indices',
     items: [
       { symbol: 'TSLA', label: 'Tesla Inc',      short: 'TSLA', base: 175.00 },
       { symbol: 'NVDA', label: 'NVIDIA Corp',    short: 'NVDA', base: 880.00 },
@@ -118,6 +125,27 @@ export const MARKET_GROUPS = [
     ]
   }
 ]
+
+// Maps each symbol to its market category key (for trade access guard)
+const SYMBOL_MARKET_MAP: Record<string, string> = {
+  BTCUSDT: 'crypto', ETHUSDT: 'crypto', SOLUSDT: 'crypto', BNBUSDT: 'crypto',
+  XRPUSDT: 'crypto', DOGEUSDT: 'crypto', ADAUSDT: 'crypto', LTCUSDT: 'crypto',
+  EURUSD: 'forex', GBPUSD: 'forex', USDJPY: 'forex', USDCHF: 'forex',
+  AUDUSD: 'forex', USDCAD: 'forex', NZDUSD: 'forex',
+  EURGBP: 'forex', EURJPY: 'forex', GBPJPY: 'forex', USDSEK: 'forex', USDNOK: 'forex',
+  XAUUSD: 'commodities', XAGUSD: 'commodities', XPTUSD: 'commodities', XPDUSD: 'commodities',
+  WTIUSD: 'commodities', BRTUSD: 'commodities', NGAS: 'commodities', GASUSD: 'commodities',
+  TASI: 'saudi_indices', ARAMCO: 'saudi_indices', DFM: 'saudi_indices', QE: 'saudi_indices',
+  ALRAJHI: 'saudi_indices', SABIC: 'saudi_indices', SNB: 'saudi_indices', ACWA: 'saudi_indices',
+  US30: 'global_indices', US500: 'global_indices', NAS100: 'global_indices', GER40: 'global_indices',
+  TSLA: 'global_indices', NVDA: 'global_indices', AAPL: 'global_indices', MSFT: 'global_indices',
+}
+
+// Maps admin-stored market_access labels to market keys
+const ADMIN_MARKET_TO_KEY: Record<string, string> = {
+  'Crypto': 'crypto', 'Forex': 'forex', 'Commodities': 'commodities',
+  'Global Indices': 'global_indices', 'Saudi Indices': 'saudi_indices',
+}
 
 function fmtPrice(n: number): string {
   if (n == null || isNaN(n)) return '---';
@@ -195,6 +223,7 @@ export default function Dashboard() {
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
+  const [allowedMarkets, setAllowedMarkets] = useState<string[]>(['crypto','forex','commodities','global_indices','saudi_indices'])
 
   const openProfilePanel = () => {
     setProfileName(user?.user_metadata?.full_name || user?.full_name || '')
@@ -248,7 +277,7 @@ export default function Dashboard() {
     setAccountHolder('')
   }
 
-  const { prices, connected } = useMarketData()
+  const { prices, connected } = useMarketData(allowedMarkets)
   const supabase = createClient()
   const userIdRef = useRef<string | null>(null)
 
@@ -292,13 +321,28 @@ export default function Dashboard() {
       if (session?.user) {
         userIdRef.current = session.user.id
         const { data: p } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-        if (p) { 
-          setUser(p); 
+        if (p) {
+          setUser(p);
           refresh(session.user.id);
           fetch('/api/payment-settings/user')
             .then(r => r.json())
             .then(({ settings }) => { if (settings) setCompanySettings(settings) })
             .catch(() => {})
+          // Fetch sub-admin's allowed_markets to filter watchlist + guard trades
+          if ((p as any).assigned_to) {
+            const { data: subAdmin } = await supabase
+              .from('profiles')
+              .select('market_access')
+              .eq('id', (p as any).assigned_to)
+              .single()
+            if ((subAdmin as any)?.market_access?.length > 0) {
+              setAllowedMarkets(
+                ((subAdmin as any).market_access as string[])
+                  .map((m: string) => ADMIN_MARKET_TO_KEY[m])
+                  .filter(Boolean)
+              )
+            }
+          }
         }
       } else router.push('/login')
     }
@@ -324,6 +368,11 @@ export default function Dashboard() {
 
   const execTrade = async (type: 'buy' | 'sell') => {
     if (!user || parseFloat(tradeAmt) <= 0 || isNaN(parseFloat(tradeAmt))) return
+    const symbolMarket = SYMBOL_MARKET_MAP[symbol]
+    if (symbolMarket && !allowedMarkets.includes(symbolMarket)) {
+      alert('This asset is not available in your subscription plan.')
+      return
+    }
     const liveP = prices[symbol]?.price || 0
     const { error } = await supabase.rpc('execute_trade', { p_user_id: user.id, p_symbol: symbol, p_amount: parseFloat(tradeAmt), p_type: type, p_entry_price: liveP })
     if (error) alert(error.message)
@@ -462,8 +511,13 @@ export default function Dashboard() {
           <div className="scroll-hide" style={{ flex: 1, overflowY: 'auto' }}>
             {(() => {
               const q = watchlistSearch.toLowerCase()
-              const filteredCrypto = BINANCE_ASSETS.filter(a => !q || a.symbol.toLowerCase().includes(q) || a.short.toLowerCase().includes(q))
-              const filteredGroups = MARKET_GROUPS.map(g => ({ ...g, items: g.items.filter(a => !q || a.symbol.toLowerCase().includes(q) || a.short.toLowerCase().includes(q)) })).filter(g => g.items.length > 0)
+              const filteredCrypto = allowedMarkets.includes('crypto')
+                ? BINANCE_ASSETS.filter(a => !q || a.symbol.toLowerCase().includes(q) || a.short.toLowerCase().includes(q))
+                : []
+              const filteredGroups = MARKET_GROUPS
+                .filter(g => allowedMarkets.includes(g.marketKey))
+                .map(g => ({ ...g, items: g.items.filter(a => !q || a.symbol.toLowerCase().includes(q) || a.short.toLowerCase().includes(q)) }))
+                .filter(g => g.items.length > 0)
               return (
                 <>
                   {filteredCrypto.length > 0 && (

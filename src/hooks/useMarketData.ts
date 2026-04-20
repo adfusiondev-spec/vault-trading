@@ -85,7 +85,7 @@ export function generateChartData(basePrice: number, points = 60): { t: string; 
 
 // ─── Main Hook ────────────────────────────────────────────────────────────────
 
-export function useMarketData() {
+export function useMarketData(allowedMarkets?: string[]) {
   const [prices, setPrices] = useState<PriceMap>({})
   const [connected, setConnected] = useState(false)
   const prevPrices = useRef<Record<string, number>>({})
@@ -231,5 +231,5 @@ export function useMarketData() {
   }, [clearFlash])
 
 
-  return { prices, connected }
+  return { prices, connected, allowedMarkets }
 }

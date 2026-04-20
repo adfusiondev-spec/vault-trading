@@ -12,6 +12,7 @@ import PaymentSettingsPanel from '@/components/admin/PaymentSettingsPanel'
 import { PackageSettings } from '@/components/admin/PackageSettings'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { calculateMonthlyPrice } from '@/lib/pricing'
 
 
 
@@ -237,11 +238,22 @@ export default function SuperAdminDashboard() {
 
     if (editingTenant) {
       // ── UPDATE EXISTING TENANT ──
+      const isTrial = formData.subscriptionPackage.toLowerCase().includes('trial')
+      const isVip = formData.subscriptionPackage.toLowerCase().includes('vip')
+      const pkgType = isTrial ? 'Trial' : isVip ? 'VIP' : 'Standard'
+      const billingKey = formData.billingCycle === 'Annual' ? 'annual' : 'monthly'
+      const mktKeys = (formData.market_access || []).map((m: string) => {
+        if (m === 'Global Indices') return 'global_indices'
+        if (m === 'Saudi Indices') return 'saudi_indices'
+        return m.toLowerCase()
+      })
+      const { monthly: subPrice } = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any)
       const { error } = await (supabase.from('profiles') as any).update({
         full_name: formData.company,
         company_slug: formData.slug,
         subscription_package: formData.subscriptionPackage,
         market_access: formData.market_access,
+        subscription_price: subPrice,
       }).eq('id', editingTenant)
 
       if (error) { alert('Update failed: ' + error.message); return }
@@ -270,9 +282,20 @@ export default function SuperAdminDashboard() {
 
       // Patch with package + markets using the real user_id from API
       if (result.user_id) {
+        const isTrial2 = formData.subscriptionPackage.toLowerCase().includes('trial')
+        const isVip2 = formData.subscriptionPackage.toLowerCase().includes('vip')
+        const pkgType2 = isTrial2 ? 'Trial' : isVip2 ? 'VIP' : 'Standard'
+        const billingKey2 = formData.billingCycle === 'Annual' ? 'annual' : 'monthly'
+        const mktKeys2 = (formData.market_access || []).map((m: string) => {
+          if (m === 'Global Indices') return 'global_indices'
+          if (m === 'Saudi Indices') return 'saudi_indices'
+          return m.toLowerCase()
+        })
+        const { monthly: subPrice2 } = calculateMonthlyPrice(mktKeys2, billingKey2, pkgType2 as any)
         await (supabase.from('profiles') as any).update({
           subscription_package: formData.subscriptionPackage,
           market_access: formData.market_access,
+          subscription_price: subPrice2,
         }).eq('id', result.user_id)
       }
 
@@ -702,12 +725,12 @@ export default function SuperAdminDashboard() {
                   <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>BILLING CYCLE</label>
                   <select value={formData.billingCycle} onChange={e => setFormData({...formData, billingCycle: e.target.value as any})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', cursor: 'pointer' }}>
                     <option value="Monthly" style={{ color: '#000' }}>Monthly</option>
-                    <option value="Annual" style={{ color: '#000' }}>Annual</option>
+                    <option value="Annual" style={{ color: '#000' }}>Annual (−20%)</option>
                   </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>SUBSCRIPTION PACKAGE</label>
-                  <select 
+                  <select
                     value={formData.subscriptionPackage}
                     onChange={(e) => setFormData({...formData, subscriptionPackage: e.target.value})}
                     style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', cursor: 'pointer' }}
@@ -723,6 +746,32 @@ export default function SuperAdminDashboard() {
                   </select>
                 </div>
               </div>
+
+              {/* ── Live Pricing Display ── */}
+              {(() => {
+                const isTrial = formData.subscriptionPackage.toLowerCase().includes('trial')
+                const isVip = formData.subscriptionPackage.toLowerCase().includes('vip')
+                const pkgType = isTrial ? 'Trial' : isVip ? 'VIP' : 'Standard'
+                const billingKey = formData.billingCycle === 'Annual' ? 'annual' : 'monthly'
+                const mktKeys = (formData.market_access || []).map((m: string) => {
+                  if (m === 'Global Indices') return 'global_indices'
+                  if (m === 'Saudi Indices') return 'saudi_indices'
+                  return m.toLowerCase()
+                })
+                const pricing = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any)
+                return (
+                  <div style={{
+                    padding: '14px 18px', background: 'rgba(255,215,0,0.04)',
+                    borderRadius: 8, border: '1px solid rgba(255,215,0,0.3)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>ESTIMATED COST</span>
+                    <span style={{ color: '#FFD700', fontSize: 20, fontWeight: 800 }}>
+                      {pricing.monthly === 0 ? 'FREE TRIAL' : pricing.label}
+                    </span>
+                  </div>
+                )
+              })()}
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 30, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
