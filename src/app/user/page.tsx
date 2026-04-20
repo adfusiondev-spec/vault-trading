@@ -89,10 +89,32 @@ export const MARKET_GROUPS = [
   {
     category: 'SAUDI & REGIONAL',
     items: [
-      { symbol: 'TASI',   label: 'Tadawul All Share',     short: 'TASI',    base: 12450 },
-      { symbol: 'ARAMCO', label: 'Saudi Aramco',          short: 'ARAMCO',  base: 29.40 },
-      { symbol: 'DFM',    label: 'Dubai Financial',       short: 'DFM',     base: 4820.0 },
-      { symbol: 'QE',     label: 'Qatar Exchange',        short: 'QE',      base: 10120 },
+      { symbol: 'TASI',    label: 'Tadawul All Share',       short: 'TASI',    base: 12450  },
+      { symbol: 'ARAMCO',  label: 'Saudi Aramco',            short: 'ARAMCO',  base: 29.40  },
+      { symbol: 'DFM',     label: 'Dubai Financial',         short: 'DFM',     base: 4820.0 },
+      { symbol: 'QE',      label: 'Qatar Exchange',          short: 'QE',      base: 10120  },
+      { symbol: 'ALRAJHI', label: 'Al Rajhi Bank',           short: 'ALRAJHI', base: 95.00  },
+      { symbol: 'SABIC',   label: 'Saudi Basic Industries',  short: 'SABIC',   base: 84.50  },
+      { symbol: 'SNB',     label: 'Saudi National Bank',     short: 'SNB',     base: 37.80  },
+      { symbol: 'ACWA',    label: 'ACWA Power',              short: 'ACWA',    base: 320.00 },
+    ]
+  },
+  {
+    category: 'GLOBAL INDICES',
+    items: [
+      { symbol: 'US30',   label: 'Wall Street 30',  short: 'US30',   base: 39500.00 },
+      { symbol: 'US500',  label: 'US SPX 500',      short: 'US500',  base: 5250.00  },
+      { symbol: 'NAS100', label: 'US Tech 100',     short: 'NAS100', base: 18200.00 },
+      { symbol: 'GER40',  label: 'Germany 40',      short: 'GER40',  base: 18400.00 },
+    ]
+  },
+  {
+    category: 'GLOBAL STOCKS',
+    items: [
+      { symbol: 'TSLA', label: 'Tesla Inc',      short: 'TSLA', base: 175.00 },
+      { symbol: 'NVDA', label: 'NVIDIA Corp',    short: 'NVDA', base: 880.00 },
+      { symbol: 'AAPL', label: 'Apple Inc',      short: 'AAPL', base: 185.00 },
+      { symbol: 'MSFT', label: 'Microsoft Corp', short: 'MSFT', base: 415.00 },
     ]
   }
 ]

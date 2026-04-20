@@ -45,10 +45,25 @@ const MOCK_COMMODITIES = [
   { symbol: 'USDSEK', base: 10.5200, volatility: 0.0010  },
   { symbol: 'USDNOK', base: 10.7800, volatility: 0.0010  },
   // Regional Markets
-  { symbol: 'TASI',   base: 12450,   volatility: 5.0    },
-  { symbol: 'ARAMCO', base: 29.40,   volatility: 0.02   },
-  { symbol: 'DFM',    base: 4820.0,  volatility: 2.0    },
-  { symbol: 'QE',     base: 10120,   volatility: 4.0    },
+  { symbol: 'TASI',    base: 12450,   volatility: 5.0    },
+  { symbol: 'ARAMCO',  base: 29.40,   volatility: 0.02   },
+  { symbol: 'DFM',     base: 4820.0,  volatility: 2.0    },
+  { symbol: 'QE',      base: 10120,   volatility: 4.0    },
+  // Saudi Stocks expansion
+  { symbol: 'ALRAJHI', base: 95.00,   volatility: 0.008  },
+  { symbol: 'SABIC',   base: 84.50,   volatility: 0.007  },
+  { symbol: 'SNB',     base: 37.80,   volatility: 0.006  },
+  { symbol: 'ACWA',    base: 320.00,  volatility: 0.009  },
+  // Global Indices
+  { symbol: 'US30',    base: 39500.0, volatility: 4.0    },
+  { symbol: 'US500',   base: 5250.0,  volatility: 0.5    },
+  { symbol: 'NAS100',  base: 18200.0, volatility: 2.0    },
+  { symbol: 'GER40',   base: 18400.0, volatility: 2.0    },
+  // Global Stocks
+  { symbol: 'TSLA',    base: 175.00,  volatility: 0.015  },
+  { symbol: 'NVDA',    base: 880.00,  volatility: 0.012  },
+  { symbol: 'AAPL',    base: 185.00,  volatility: 0.008  },
+  { symbol: 'MSFT',    base: 415.00,  volatility: 0.007  },
 ]
 
 // ─── Chart data generator ─────────────────────────────────────────────────────
