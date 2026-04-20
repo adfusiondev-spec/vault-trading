@@ -1087,8 +1087,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             
             <form onSubmit={handleSubscriptionPayment} style={{ padding: 30, display: 'flex', flexDirection: 'column', gap: 15 }}>
 
-              {/* BILLING CYCLE */}
-              <div>
+              {/* BILLING CYCLE — hidden for trial */}
+              {trialOption === 'none' && <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>BILLING CYCLE</label>
                 <select
                   value={billingCycle}
@@ -1232,9 +1232,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   <div style={{ fontSize: 12, fontWeight: 700, color: '#10B981', marginBottom: 4 }}>Trial Mode Active</div>
                   <div style={{ fontSize: 11, color: '#8a8e9b', lineHeight: 1.6 }}>
                     No payment required. You will be charged{' '}
-                    <span style={{ color: '#FFD700', fontWeight: 700 }}>
-                      ${billingCycle === 'monthly' ? (activePkg?.monthly_price ?? 0) : (activePkg?.yearly_price ?? 0)}
-                    </span>/{billingCycle === 'monthly' ? 'mo' : 'yr'} after your trial expires.
+                    <span style={{ color: '#FFD700', fontWeight: 700 }}>$0</span>{' '}
+                    after your trial expires.
                   </div>
                 </div>
               )}
