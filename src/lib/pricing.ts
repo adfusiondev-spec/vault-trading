@@ -6,23 +6,23 @@ export const MARKET_OPTIONS = [
   },
   {
     key: 'forex',
-    label: 'Forex',
+    label: 'Forex (Majors & Minors)',
     includedInBase: true,
   },
   {
     key: 'commodities',
-    label: 'Precious Metals & Energy',
+    label: 'Commodities (Metals & Energy)',
     includedInBase: true,
   },
   {
     key: 'global_indices',
-    label: 'Global Indices & Stocks',
+    label: 'Global Markets (Indices & Stocks)',
     includedInBase: false,
     addon: 100,
   },
   {
     key: 'saudi_indices',
-    label: 'Saudi & Regional Indices',
+    label: 'Saudi & Regional Markets',
     includedInBase: false,
     addon: 300,
   },

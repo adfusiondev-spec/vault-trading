@@ -128,17 +128,40 @@ export const MARKET_GROUPS = [
 
 // Maps each symbol to its market category key (for trade access guard)
 const SYMBOL_MARKET_MAP: Record<string, string> = {
+  // Crypto
   BTCUSDT: 'crypto', ETHUSDT: 'crypto', SOLUSDT: 'crypto', BNBUSDT: 'crypto',
   XRPUSDT: 'crypto', DOGEUSDT: 'crypto', ADAUSDT: 'crypto', LTCUSDT: 'crypto',
+  // Forex (plain + slash variants)
   EURUSD: 'forex', GBPUSD: 'forex', USDJPY: 'forex', USDCHF: 'forex',
   AUDUSD: 'forex', USDCAD: 'forex', NZDUSD: 'forex',
   EURGBP: 'forex', EURJPY: 'forex', GBPJPY: 'forex', USDSEK: 'forex', USDNOK: 'forex',
+  'EUR/USD': 'forex', 'GBP/USD': 'forex', 'USD/JPY': 'forex', 'USD/CHF': 'forex',
+  'AUD/USD': 'forex', 'USD/CAD': 'forex', 'NZD/USD': 'forex',
+  'EUR/GBP': 'forex', 'EUR/JPY': 'forex', 'GBP/JPY': 'forex',
+  // Commodities (plain + display name variants)
   XAUUSD: 'commodities', XAGUSD: 'commodities', XPTUSD: 'commodities', XPDUSD: 'commodities',
   WTIUSD: 'commodities', BRTUSD: 'commodities', NGAS: 'commodities', GASUSD: 'commodities',
+  'XAU/USD': 'commodities', 'XAG/USD': 'commodities', 'XPT/USD': 'commodities', 'XPD/USD': 'commodities',
+  'WTI/USD': 'commodities', 'BRT/USD': 'commodities',
+  Gold: 'commodities', Silver: 'commodities', Platinum: 'commodities', Palladium: 'commodities',
+  'Crude Oil (WTI)': 'commodities', 'Brent Crude': 'commodities', 'Natural Gas': 'commodities', Gasoline: 'commodities',
+  // Saudi & Regional
   TASI: 'saudi_indices', ARAMCO: 'saudi_indices', DFM: 'saudi_indices', QE: 'saudi_indices',
   ALRAJHI: 'saudi_indices', SABIC: 'saudi_indices', SNB: 'saudi_indices', ACWA: 'saudi_indices',
+  'Saudi Aramco': 'saudi_indices', 'Al Rajhi Bank': 'saudi_indices',
+  'Saudi Basic Industries': 'saudi_indices', 'Saudi National Bank': 'saudi_indices',
+  'ACWA Power': 'saudi_indices', 'Tadawul All Share': 'saudi_indices',
+  'Dubai Financial': 'saudi_indices', 'Qatar Exchange': 'saudi_indices',
+  // Global Indices & Stocks
   US30: 'global_indices', US500: 'global_indices', NAS100: 'global_indices', GER40: 'global_indices',
   TSLA: 'global_indices', NVDA: 'global_indices', AAPL: 'global_indices', MSFT: 'global_indices',
+  'Wall Street 30': 'global_indices', 'US SPX 500': 'global_indices',
+  'US Tech 100': 'global_indices', 'Germany 40': 'global_indices',
+  'Tesla Inc': 'global_indices', 'NVIDIA Corp': 'global_indices',
+  'Apple Inc': 'global_indices', 'Microsoft Corp': 'global_indices',
+  'S&P 500': 'global_indices', 'Nasdaq 100': 'global_indices',
+  'Dow Jones': 'global_indices', 'DAX 40': 'global_indices',
+  'FTSE 100': 'global_indices', 'Nikkei 225': 'global_indices', 'Hang Seng': 'global_indices',
 }
 
 // Maps admin-stored market_access labels to market keys
@@ -332,15 +355,13 @@ export default function Dashboard() {
           if ((p as any).assigned_to) {
             const { data: subAdmin } = await supabase
               .from('profiles')
-              .select('market_access')
+              .select('allowed_markets')
               .eq('id', (p as any).assigned_to)
               .single()
-            if ((subAdmin as any)?.market_access?.length > 0) {
-              setAllowedMarkets(
-                ((subAdmin as any).market_access as string[])
-                  .map((m: string) => ADMIN_MARKET_TO_KEY[m])
-                  .filter(Boolean)
-              )
+            if ((subAdmin as any)?.allowed_markets?.length > 0) {
+              setAllowedMarkets((subAdmin as any).allowed_markets as string[])
+            } else {
+              setAllowedMarkets(['crypto', 'forex', 'commodities', 'global_indices', 'saudi_indices'])
             }
           }
         }
@@ -370,7 +391,7 @@ export default function Dashboard() {
     if (!user || parseFloat(tradeAmt) <= 0 || isNaN(parseFloat(tradeAmt))) return
     const symbolMarket = SYMBOL_MARKET_MAP[symbol]
     if (symbolMarket && !allowedMarkets.includes(symbolMarket)) {
-      alert('This asset is not available in your subscription plan.')
+      alert('Market access restricted by your broker')
       return
     }
     const liveP = prices[symbol]?.price || 0

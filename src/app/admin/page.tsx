@@ -246,6 +246,7 @@ export default function SuperAdminDashboard() {
         company_slug: formData.slug,
         subscription_package: formData.subscriptionPackage,
         market_access: formData.market_access,
+        allowed_markets: mktKeys,
         subscription_price: subPrice,
       }).eq('id', editingTenant)
 
@@ -288,6 +289,7 @@ export default function SuperAdminDashboard() {
         await (supabase.from('profiles') as any).update({
           subscription_package: formData.subscriptionPackage,
           market_access: formData.market_access,
+          allowed_markets: mktKeys2,
           subscription_price: subPrice2,
         }).eq('id', result.user_id)
       }
