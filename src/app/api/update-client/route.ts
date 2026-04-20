@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
+import { encryptPassword } from '@/lib/crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,6 +44,10 @@ export async function POST(request: NextRequest) {
         password: data.password
       })
       if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+      await adminClient.from('profiles').update({
+        encrypted_password: encryptPassword(data.password),
+      }).eq('id', user_id)
 
       return NextResponse.json({ success: true })
     }

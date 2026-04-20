@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
+import { encryptPassword } from '@/lib/crypto'
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,12 +52,13 @@ export async function POST(request: NextRequest) {
     // 4. Update Profile with assigned_to and new fields
     const { error: profileError } = await adminClient
       .from('profiles')
-      .update({ 
+      .update({
         full_name,
         phone_number,
         country,
         assigned_to: assignedToId,
-        role: 'trader'
+        role: 'trader',
+        encrypted_password: encryptPassword(password),
       })
       .eq('id', authUser.user.id)
 

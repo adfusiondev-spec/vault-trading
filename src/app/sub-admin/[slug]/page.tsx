@@ -569,6 +569,20 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               </button>
             )
           })}
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <button
+              onClick={() => router.push(`/sub-admin/${slug}/profile`)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                borderRadius: 8, border: '1px solid rgba(255,215,0,0.2)', cursor: 'pointer', textAlign: 'left', width: '100%',
+                background: 'transparent', color: '#FFD700',
+                fontSize: 13, fontWeight: 600, transition: 'all 0.15s'
+              }}
+            >
+              <Settings size={18} strokeWidth={1.5} />
+              My Profile
+            </button>
+          </div>
         </div>
 
         {/* ── Main CRM Area ── */}

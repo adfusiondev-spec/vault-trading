@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Crown, Building2, Globe, Database, LogOut, ShieldCheck, ShieldAlert, Check, Plus, DollarSign, AlertTriangle, Key, X, Settings2, Settings, Power, Play, Trash2, Eye, EyeOff, Copy } from 'lucide-react'
+import { PasswordField } from '@/components/PasswordField'
 import { createClient } from '@/lib/supabase/client'
 import { FinancialDesk } from '@/components/admin/FinancialDesk'
 import { useNotifications } from '@/hooks/useNotifications'
@@ -403,6 +404,20 @@ export default function SuperAdminDashboard() {
               </button>
             )
           })}
+          <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <button
+              onClick={() => router.push('/admin/profile')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                borderRadius: 8, border: '1px solid rgba(255,215,0,0.2)', cursor: 'pointer', textAlign: 'left', width: '100%',
+                background: 'transparent', color: '#FFD700',
+                fontSize: 13, fontWeight: 600, transition: 'all 0.15s'
+              }}
+            >
+              <Key size={18} strokeWidth={1.5} />
+              My Profile
+            </button>
+          </div>
         </div>
 
         {/* ── Main CRM Area ── */}
@@ -629,6 +644,9 @@ export default function SuperAdminDashboard() {
                   <input type="email" value={formData.adminEmail} onChange={e => setFormData({...formData, adminEmail: e.target.value})} placeholder="admin@domain.com" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none' }} />
                 </div>
                 <div>
+                  {editingTenant && (
+                    <PasswordField userId={editingTenant} label="Current Password" containerStyle={{ marginBottom: 12 }} />
+                  )}
                   <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>
                     {editingTenant ? 'NEW PASSWORD (leave blank to keep current)' : 'PASSWORD'}
                   </label>
@@ -645,7 +663,7 @@ export default function SuperAdminDashboard() {
                   </div>
                   {editingTenant && (
                     <div style={{ color: '#555', fontSize: 10, marginTop: 5 }}>
-                      Password is stored securely in Supabase Auth. Leave blank to keep the existing password unchanged.
+                      Leave blank to keep the existing password unchanged.
                     </div>
                   )}
                 </div>

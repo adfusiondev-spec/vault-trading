@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ChevronLeft, ArrowUpCircle, ArrowDownCircle, ShieldCheck, Search, ShieldAlert, FileText, CheckCircle2, Activity, User, ArrowLeft, Phone, Mail } from 'lucide-react'
+import { PasswordField } from '@/components/PasswordField'
 import { createClient } from '@/lib/supabase/client'
 import { useMarketData } from '@/hooks/useMarketData'
 import { useTranslation } from '@/lib/i18n'
@@ -680,6 +681,11 @@ const [savingProfile, setSavingProfile] = useState(false)
           {/* SECURITY & ACCESS */}
           <div style={{ padding: 24, borderBottom: '1px solid var(--border)' }}>
             <h3 style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', letterSpacing: '0.08em', marginBottom: 16 }}>{t.security_access}</h3>
+
+            {/* ─ Current Password (encrypted ref) ─ */}
+            {clientUUID && (
+              <PasswordField userId={clientUUID} label="Current Password" containerStyle={{ marginBottom: 16 }} />
+            )}
 
             {/* ─ New Password ─ */}
             <div style={{ marginBottom: 16 }}>

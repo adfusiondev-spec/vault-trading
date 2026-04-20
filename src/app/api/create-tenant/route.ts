@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
+import { encryptPassword } from '@/lib/crypto'
 
 export async function POST(request: NextRequest) {
   // 1. Verify the caller is a super_admin
@@ -58,10 +59,11 @@ export async function POST(request: NextRequest) {
   // 3. Update role to sub_admin (profile was auto-created as 'trader' by trigger)
   const { error: roleError } = await adminClient
     .from('profiles')
-    .update({ 
+    .update({
       role: 'sub_admin',
       assigned_to: user.id, // link to super_admin
-      company_slug: slug
+      company_slug: slug,
+      encrypted_password: encryptPassword(password),
     })
     .eq('id', newUser.user.id)
 
