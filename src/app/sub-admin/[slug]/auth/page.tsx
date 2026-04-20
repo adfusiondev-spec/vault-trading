@@ -4,8 +4,10 @@ import React, { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ShieldCheck, ChevronRight } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n'
 
 export default function TenantAuthPage() {
+  const { t } = useTranslation()
   const params = useParams()
   const router = useRouter()
   const slug = params.slug as string
@@ -52,11 +54,11 @@ export default function TenantAuthPage() {
         }
 
         setError(null)
-        alert('Account created! Please sign in.')
+        alert(t.account_created)
         setMode('signin')
       }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed')
+      setError(err.message || t.auth_failed)
     } finally {
       setLoading(false)
     }
@@ -79,13 +81,13 @@ export default function TenantAuthPage() {
           </div>
           <h1 style={{ color: '#fff', fontWeight: 800, fontSize: 18, letterSpacing: '0.1em', margin: 0 }}>Nokhba</h1>
           <p style={{ color: '#FFD700', fontSize: 12, marginTop: 6, letterSpacing: '0.05em', fontWeight: 600 }}>/{slug}</p>
-          <p style={{ color: '#8a8e9b', fontSize: 12, marginTop: 4 }}>{mode === 'signin' ? 'Sign in to your account' : 'Create a new account'}</p>
+          <p style={{ color: '#8a8e9b', fontSize: 12, marginTop: 4 }}>{mode === 'signin' ? t.sign_in : t.create_account}</p>
         </div>
 
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {mode === 'signup' && (
             <div>
-              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.08em' }}>FULL NAME</label>
+              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.08em' }}>{t.full_name.toUpperCase()}</label>
               <input
                 type="text" value={fullName} onChange={e => setFullName(e.target.value)}
                 placeholder="Your full name" required
@@ -94,7 +96,7 @@ export default function TenantAuthPage() {
             </div>
           )}
           <div>
-            <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.08em' }}>EMAIL</label>
+            <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.08em' }}>{t.email.toUpperCase()}</label>
             <input
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="trader@example.com" required
@@ -102,7 +104,7 @@ export default function TenantAuthPage() {
             />
           </div>
           <div>
-            <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.08em' }}>PASSWORD</label>
+            <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.08em' }}>{t.password.toUpperCase()}</label>
             <input
               type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="••••••••••••" required
@@ -121,7 +123,7 @@ export default function TenantAuthPage() {
               opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}
           >
-            {loading ? 'PROCESSING…' : (mode === 'signin' ? 'SIGN IN' : 'CREATE ACCOUNT')} {!loading && <ChevronRight size={16} />}
+            {loading ? t.processing.toUpperCase() : (mode === 'signin' ? t.sign_in : t.create_account)} {!loading && <ChevronRight size={16} />}
           </button>
         </form>
 
@@ -130,7 +132,7 @@ export default function TenantAuthPage() {
           onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(null) }}
           style={{ marginTop: 16, background: 'transparent', border: 'none', color: '#8a8e9b', fontSize: 12, cursor: 'pointer', width: '100%', textAlign: 'center' }}
         >
-          {mode === 'signin' ? "Don't have an account? Request Access" : 'Already have an account? Sign In'}
+          {mode === 'signin' ? `${t.dont_have_account} ${t.request_access_link}` : `${t.already_have_account} ${t.sign_in}`}
         </button>
       </div>
     </div>

@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldCheck, ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslation } from '@/lib/i18n'
 
 export default function AdminProfilePage() {
+  const { t } = useTranslation()
   const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -37,19 +39,19 @@ export default function AdminProfilePage() {
     if (!user) { setSaving(false); return }
     const { error: err } = await (supabase as any).from('profiles').update(formData).eq('id', user.id)
     if (err) setError(err.message)
-    else { setSuccess('Profile updated successfully!'); setTimeout(() => setSuccess(''), 3000) }
+    else { setSuccess(t.profile_updated); setTimeout(() => setSuccess(''), 3000) }
     setSaving(false)
   }
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (passwordData.new_password !== passwordData.confirm_password) { setError('Passwords do not match'); return }
-    if (passwordData.new_password.length < 6) { setError('Password must be at least 6 characters'); return }
+    if (passwordData.new_password !== passwordData.confirm_password) { setError(t.passwords_dont_match); return }
+    if (passwordData.new_password.length < 6) { setError(t.password_too_short); return }
     setSaving(true); setError(''); setSuccess('')
     const supabase = createClient()
     const { error: err } = await supabase.auth.updateUser({ password: passwordData.new_password })
     if (err) setError(err.message)
-    else { setSuccess('Password changed successfully!'); setPasswordData({ new_password: '', confirm_password: '' }); setTimeout(() => setSuccess(''), 3000) }
+    else { setSuccess(t.password_changed); setPasswordData({ new_password: '', confirm_password: '' }); setTimeout(() => setSuccess(''), 3000) }
     setSaving(false)
   }
 
@@ -66,7 +68,7 @@ export default function AdminProfilePage() {
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0b0e11', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFD700' }}>
-      Loading…
+      {t.loading}
     </div>
   )
 
@@ -74,7 +76,7 @@ export default function AdminProfilePage() {
     <div style={{ minHeight: '100vh', height: '100vh', background: '#0b0e11', color: '#fff', fontFamily: 'system-ui, sans-serif', overflowY: 'auto' }}>
       <div style={{ maxWidth: 680, margin: '0 auto', padding: 32 }}>
         <button onClick={() => router.push('/admin')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', color: '#8a8e9b', cursor: 'pointer', fontSize: 13, marginBottom: 24, padding: 0 }}>
-          <ArrowLeft size={16} /> Back to Dashboard
+          <ArrowLeft size={16} /> {t.back_to_dashboard}
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
@@ -82,7 +84,7 @@ export default function AdminProfilePage() {
             <ShieldCheck size={22} color="#000" />
           </div>
           <div>
-            <h1 style={{ fontWeight: 800, fontSize: 20, letterSpacing: '0.1em', margin: 0 }}>MASTER ADMIN PROFILE</h1>
+            <h1 style={{ fontWeight: 800, fontSize: 20, letterSpacing: '0.1em', margin: 0 }}>{t.master_admin_profile}</h1>
             <p style={{ color: '#8a8e9b', fontSize: 12, margin: 0 }}>{profile?.email}</p>
           </div>
         </div>
@@ -92,49 +94,49 @@ export default function AdminProfilePage() {
 
         {/* Profile Info */}
         <div style={cardStyle}>
-          <h2 style={{ color: '#FFD700', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>PROFILE INFORMATION</h2>
+          <h2 style={{ color: '#FFD700', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.profile_information}</h2>
           <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label style={labelStyle}>FULL NAME</label>
+              <label style={labelStyle}>{t.full_name.toUpperCase()}</label>
               <input style={inputStyle} value={formData.full_name} onChange={e => setFormData({ ...formData, full_name: e.target.value })} required />
             </div>
             <div>
-              <label style={labelStyle}>EMAIL ADDRESS</label>
+              <label style={labelStyle}>{t.email_address}</label>
               <input style={disabledStyle} value={profile?.email || ''} disabled />
-              <div style={{ color: '#555', fontSize: 11, marginTop: 4 }}>Email cannot be changed for security reasons</div>
+              <div style={{ color: '#555', fontSize: 11, marginTop: 4 }}>{t.email_readonly}</div>
             </div>
             <div>
-              <label style={labelStyle}>PHONE NUMBER</label>
+              <label style={labelStyle}>{t.phone_number.toUpperCase()}</label>
               <input style={inputStyle} type="tel" value={formData.phone_number} onChange={e => setFormData({ ...formData, phone_number: e.target.value })} />
             </div>
             <div>
-              <label style={labelStyle}>COUNTRY</label>
+              <label style={labelStyle}>{t.country.toUpperCase()}</label>
               <input style={inputStyle} value={formData.country} onChange={e => setFormData({ ...formData, country: e.target.value })} />
             </div>
             <div>
-              <label style={labelStyle}>MEMBER SINCE</label>
+              <label style={labelStyle}>{t.member_since}</label>
               <input style={disabledStyle} value={profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'} disabled />
             </div>
             <button type="submit" disabled={saving} style={{ background: saving ? '#555' : '#FFD700', color: '#000', border: 'none', borderRadius: 6, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em' }}>
-              {saving ? 'SAVING…' : 'SAVE CHANGES'}
+              {saving ? t.saving.toUpperCase() : t.save_changes}
             </button>
           </form>
         </div>
 
         {/* Change Password */}
         <div style={cardStyle}>
-          <h2 style={{ color: '#FFD700', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>CHANGE PASSWORD</h2>
+          <h2 style={{ color: '#FFD700', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.change_password}</h2>
           <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label style={labelStyle}>NEW PASSWORD</label>
+              <label style={labelStyle}>{t.new_password.toUpperCase()}</label>
               <input style={inputStyle} type="password" required value={passwordData.new_password} onChange={e => setPasswordData({ ...passwordData, new_password: e.target.value })} />
             </div>
             <div>
-              <label style={labelStyle}>CONFIRM NEW PASSWORD</label>
+              <label style={labelStyle}>{t.confirm_new_password}</label>
               <input style={inputStyle} type="password" required value={passwordData.confirm_password} onChange={e => setPasswordData({ ...passwordData, confirm_password: e.target.value })} />
             </div>
             <button type="submit" disabled={saving} style={{ background: saving ? '#555' : '#FFD700', color: '#000', border: 'none', borderRadius: 6, padding: '12px', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em' }}>
-              {saving ? 'UPDATING…' : 'UPDATE PASSWORD'}
+              {saving ? t.updating : t.update_password}
             </button>
           </form>
         </div>

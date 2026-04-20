@@ -4,8 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ShieldCheck } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n'
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation()
   const [newPassword, setNewPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,8 +17,8 @@ export default function ResetPasswordPage() {
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (newPassword.length < 6) return alert('Password must be at least 6 characters.')
-    if (newPassword !== confirm) return alert('Passwords do not match.')
+    if (newPassword.length < 6) return alert(t.password_too_short)
+    if (newPassword !== confirm) return alert(t.passwords_dont_match)
     setLoading(true)
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
@@ -24,7 +26,7 @@ export default function ResetPasswordPage() {
       setDone(true)
       setTimeout(() => router.push('/login'), 2000)
     } catch (err: any) {
-      alert(err.message || 'Failed to reset password.')
+      alert(err.message || t.password_reset_error)
     } finally {
       setLoading(false)
     }
@@ -45,18 +47,18 @@ export default function ResetPasswordPage() {
           <div style={{ width: 48, height: 48, background: '#FFD700', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <ShieldCheck size={26} color="#000" strokeWidth={2.5} />
           </div>
-          <h1 style={{ color: '#fff', fontWeight: 800, fontSize: 20, letterSpacing: '0.1em', margin: 0 }}>RESET PASSWORD</h1>
-          <p style={{ color: '#8a8e9b', fontSize: 13, marginTop: 8 }}>Nokhba — SECURE PORTAL</p>
+          <h1 style={{ color: '#fff', fontWeight: 800, fontSize: 20, letterSpacing: '0.1em', margin: 0 }}>{t.reset_password_title}</h1>
+          <p style={{ color: '#8a8e9b', fontSize: 13, marginTop: 8 }}>Nokhba — {t.secure_portal}</p>
         </div>
 
         {done ? (
           <div style={{ textAlign: 'center', color: '#26a69a', fontWeight: 700, fontSize: 14 }}>
-            Password updated successfully. Redirecting to login…
+            {t.password_reset_success}
           </div>
         ) : (
           <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: '0.08em' }}>NEW PASSWORD</label>
+              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: '0.08em' }}>{t.new_password.toUpperCase()}</label>
               <input
                 type="password"
                 value={newPassword}
@@ -71,7 +73,7 @@ export default function ResetPasswordPage() {
               />
             </div>
             <div>
-              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: '0.08em' }}>CONFIRM PASSWORD</label>
+              <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 8, letterSpacing: '0.08em' }}>{t.confirm_password}</label>
               <input
                 type="password"
                 value={confirm}
@@ -95,7 +97,7 @@ export default function ResetPasswordPage() {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? 'UPDATING…' : 'UPDATE PASSWORD'}
+              {loading ? t.updating : t.update_password}
             </button>
           </form>
         )}
