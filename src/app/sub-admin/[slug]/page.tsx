@@ -592,7 +592,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             {activeTab === 'monitor' && (
               <div className="crm-section fade-in">
                 <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#FFD700', letterSpacing: '0.05em' }}>LIVE TRADE MONITOR</h2>
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflowY: 'auto', maxHeight: 'calc(100vh - 220px)' }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead style={{ background: 'rgba(0,0,0,0.2)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                       <tr>
@@ -750,7 +750,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12, minWidth: 980 }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,215,0,0.07)', borderBottom: '2px solid rgba(255,215,0,0.2)' }}>
-                        {['#', t.full_name, t.email, t.phone_number, t.country, `${t.balance} (USD)`, 'REG DATE', t.status, t.actions].map(col => (
+                        {[t.full_name, t.email, t.phone_number, t.country, `${t.balance} (USD)`, 'REG DATE', t.status, t.actions].map(col => (
                           <th key={col} style={{ padding: '13px 14px', fontWeight: 700, color: '#FFD700', fontSize: 10, letterSpacing: '0.08em', whiteSpace: 'nowrap', userSelect: 'none' }}>{col}</th>
                         ))}
                       </tr>
@@ -758,7 +758,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                     <tbody>
                       {filteredClients.length === 0 ? (
                         <tr>
-                          <td colSpan={9} style={{ padding: 50, textAlign: 'center', color: '#8a8e9b', background: 'rgba(255,255,255,0.01)' }}>
+                          <td colSpan={8} style={{ padding: 50, textAlign: 'center', color: '#8a8e9b', background: 'rgba(255,255,255,0.01)' }}>
                             {searchQuery ? 'No clients match your search.' : 'No clients registered under your account yet.'}
                           </td>
                         </tr>
@@ -778,8 +778,6 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,215,0,0.04)')}
                             onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent')}
                           >
-                            {/* Row # */}
-                            <td style={{ padding: '13px 14px', color: '#555', fontFamily: 'monospace', fontWeight: 600, borderRight: '1px solid rgba(255,255,255,0.04)' }}>{String(i + 1).padStart(2, '0')}</td>
                             {/* Full Name */}
                             <td style={{ padding: '13px 14px', color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>{trader.full_name || '—'}</td>
                             {/* Email */}
