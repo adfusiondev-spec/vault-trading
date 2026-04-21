@@ -16,6 +16,29 @@ import { calculateMonthlyPrice } from '@/lib/pricing'
 
 
 
+function CopyAddressButton({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(address)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = address
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button onClick={handleCopy} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 16px', width: '100%', justifyContent: 'center', background: copied ? 'rgba(34,197,94,0.15)' : 'transparent', border: `1px solid ${copied ? '#22c55e' : '#374151'}`, color: copied ? '#22c55e' : '#9ca3af', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }}>
+      {copied ? '✓ Copied!' : '⎘ Copy Address'}
+    </button>
+  )
+}
+
 export default function SuperAdminDashboard() {
   const router = useRouter()
   const { t } = useTranslation()
@@ -25,6 +48,8 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [adminId, setAdminId] = useState<string | null>(null)
+
+  const supabase = createClient()
 
   // Tenants & Modal State
   const [companies, setCompanies] = useState<any[]>([])
@@ -328,7 +353,6 @@ export default function SuperAdminDashboard() {
       height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
       background: '#040608', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'hidden'
     }}>
-      
       {/* ── Top Navigation Bar ── */}
       <div style={{
         height: 60, flexShrink: 0, borderBottom: '1px solid var(--border)',
@@ -609,7 +633,11 @@ export default function SuperAdminDashboard() {
               </div>
             )}
             
-            {activeTab === 'financial' && <FinancialDesk />}
+            {activeTab === 'financial' && (
+              <div style={{ overflowY: 'auto', height: '100%', padding: '24px' }}>
+                <FinancialDesk />
+              </div>
+            )}
 
             {activeTab === 'packages' && <PackageSettings />}
 
