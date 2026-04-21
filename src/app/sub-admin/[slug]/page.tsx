@@ -33,6 +33,29 @@ const BILLING_CYCLES = [
 
 type BillingCycle = 'monthly' | 'yearly'
 
+function CopyAddressButton({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(address)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = address
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button onClick={handleCopy} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 16px', background: copied ? 'rgba(34,197,94,0.15)' : 'transparent', border: `1px solid ${copied ? '#22c55e' : '#374151'}`, color: copied ? '#22c55e' : '#9ca3af', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', width: '100%', justifyContent: 'center' }}>
+      {copied ? '✓ Copied!' : '⎘ Copy Address'}
+    </button>
+  )
+}
+
 export default function SubAdminDashboard({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter()
   const { t } = useTranslation()
@@ -536,16 +559,34 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   {tx.payment_method?.toLowerCase().includes('usdt') && <>
                     {row('Network', tx.payment_details?.network || 'TRC20')}
                     {row('Amount', `$${Number(tx.amount).toFixed(2)}`)}
-                    {row('Wallet Address', <span style={{ fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer', color: '#FFD700' }} onClick={() => navigator.clipboard.writeText(tx.destination_address || '')} title="Click to copy">{tx.destination_address || '—'} {tx.destination_address ? '⎘' : ''}</span>)}
+                    {tx.destination_address ? (
+                      <div style={{ borderBottom: '1px solid #1f1f1f', padding: '12px 0' }}>
+                        <div style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '8px' }}>Wallet Address</div>
+                        <div style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', fontFamily: 'monospace', fontSize: '13px', color: '#FFD700', wordBreak: 'break-all', lineHeight: '1.6', letterSpacing: '0.3px', marginBottom: '8px' }}>{tx.destination_address}</div>
+                        <CopyAddressButton address={tx.destination_address} />
+                      </div>
+                    ) : row('Wallet Address', '—')}
                   </>}
                   {tx.payment_method?.toLowerCase().includes('btc') && <>
                     {row('Amount', `$${Number(tx.amount).toFixed(2)}`)}
-                    {row('BTC Address', <span style={{ fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer', color: '#FFD700' }} onClick={() => navigator.clipboard.writeText(tx.destination_address || '')} title="Click to copy">{tx.destination_address || '—'} {tx.destination_address ? '⎘' : ''}</span>)}
+                    {tx.destination_address ? (
+                      <div style={{ borderBottom: '1px solid #1f1f1f', padding: '12px 0' }}>
+                        <div style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '8px' }}>BTC Address</div>
+                        <div style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', fontFamily: 'monospace', fontSize: '13px', color: '#FFD700', wordBreak: 'break-all', lineHeight: '1.6', letterSpacing: '0.3px', marginBottom: '8px' }}>{tx.destination_address}</div>
+                        <CopyAddressButton address={tx.destination_address} />
+                      </div>
+                    ) : row('BTC Address', '—')}
                   </>}
                   {tx.payment_method?.toLowerCase().includes('bank') && <>
                     {row('Bank Name', tx.payment_details?.bank_name)}
                     {row('Account Holder', tx.payment_details?.account_holder)}
-                    {row('RIB / IBAN', <span style={{ fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer', color: '#FFD700' }} onClick={() => navigator.clipboard.writeText(tx.payment_details?.iban || '')} title="Click to copy">{tx.payment_details?.iban || '—'} {tx.payment_details?.iban ? '⎘' : ''}</span>)}
+                    {tx.payment_details?.iban ? (
+                      <div style={{ borderBottom: '1px solid #1f1f1f', padding: '12px 0' }}>
+                        <div style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '8px' }}>RIB / IBAN</div>
+                        <div style={{ background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 14px', fontFamily: 'monospace', fontSize: '13px', color: '#FFD700', wordBreak: 'break-all', lineHeight: '1.6', marginBottom: '8px' }}>{tx.payment_details.iban}</div>
+                        <CopyAddressButton address={tx.payment_details.iban} />
+                      </div>
+                    ) : row('RIB / IBAN', '—')}
                   </>}
                   {!tx.destination_address && !tx.payment_details && (
                     <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '12px' }}>No destination info provided by client.</p>
