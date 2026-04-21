@@ -526,11 +526,11 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, height: 0, minHeight: 0 }}>
+      <div style={{ display: 'flex', height: 'calc(100vh - 60px)' }}>
         
         {/* ── Sidebar CRM Navigation ── */}
         <div style={{
-          width: 240, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',
+          width: 240, flexShrink: 0, overflowY: 'hidden', borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',
           display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px'
         }}>
           {[
