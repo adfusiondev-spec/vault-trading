@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Activity, DollarSign, LogOut, ShieldCheck, AlertCircle, Check, X, Bell, Eye, Settings, CreditCard } from 'lucide-react'
+import { Users, Activity, DollarSign, LogOut, ShieldCheck, Check, X, Bell, Eye, Settings, CreditCard } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingTransactions } from '@/hooks/usePendingTransactions'
 import { useMarketData } from '@/hooks/useMarketData'
@@ -36,15 +36,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const router = useRouter()
   const { t } = useTranslation()
   const { slug } = React.use(params)
-  const { prices } = useMarketData()
+  useMarketData()
 
-  const calculatePnL = (trade: any, currentPrice: number) => {
-    if (!currentPrice || !trade.entryPrice) return 0
-    const pnl = trade.type === 'Buy'
-      ? (currentPrice - trade.entryPrice) * (trade.amount / trade.entryPrice)
-      : (trade.entryPrice - currentPrice) * (trade.amount / trade.entryPrice)
-    return pnl
-  }
 
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'financial' | 'subscription' | 'payment-settings'>('monitor')
@@ -250,8 +243,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             .from('trades')
             .select('*, profiles:user_id(email, full_name)')
             .in('user_id', traderIds)
-            .eq('status', 'open')
             .order('created_at', { ascending: false })
+            .limit(100)
 
           if (oError) console.error('Trades fetch error:', oError.message)
 
@@ -265,7 +258,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               type: o.type === 'buy' ? 'Buy' : 'Sell',
               amount: parseFloat(o.amount || '0'),
               entryPrice: parseFloat(o.entry_price || '0'),
-              status: 'Open'
+              status: o.status,
+              profit_loss: parseFloat(o.profit_loss || '0'),
             }))
             setTrades(formattedTrades)
           }
@@ -371,11 +365,6 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     })
   }
 
-  const handleEmergencyClose = (id: string) => {
-    if (confirm('Are you sure you want to forcibly close this active trade?')) {
-      setTrades(prev => prev.filter(t => t.id !== id))
-    }
-  }
 
   const handleFinancialAction = async (id: string, action: 'approve' | 'reject') => {
     const newStatus = action === 'approve' ? 'approved' : 'rejected' // matching database enum
@@ -603,53 +592,83 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             {activeTab === 'monitor' && (
               <div className="crm-section fade-in">
                 <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#FFD700', letterSpacing: '0.05em' }}>LIVE TRADE MONITOR</h2>
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflowY: 'auto', maxHeight: 'calc(100vh - 220px)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead style={{ background: 'rgba(0,0,0,0.2)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                       <tr>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.name}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.email}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.asset} & {t.type}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.amount}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>{t.profit_loss}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>RISK CONTROL</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>NAME</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>ASSET & TYPE</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>AMOUNT</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>P&amp;L</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>STATUS</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>DETAILS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {trades.length === 0 ? (
-                        <tr><td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>No active trades on the network.</td></tr>
-                      ) : trades.map((trade) => {
-                        const price = prices[trade.asset]?.price || prices[trade.asset + 'T']?.price || 0
-                        const pnl = calculatePnL(trade, price)
-                        return (
+                        <tr><td colSpan={6} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>No trades on record.</td></tr>
+                      ) : trades.map((trade) => (
                         <tr key={trade.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#8a8e9b' }} title={trade.id}>{trade.userName.slice(0, 20)}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 500 }}>{trade.userEmail}</td>
+                          <td style={{ padding: '12px 16px', color: '#fff' }}>{trade.userName}</td>
                           <td style={{ padding: '12px 16px' }}>
-                            <span style={{ fontWeight: 600 }}>{trade.asset}</span>
-                            <span style={{ marginLeft: 8, padding: '2px 6px', borderRadius: 4, fontSize: 11, background: trade.type === 'Buy' ? 'rgba(38,166,154,0.15)' : 'rgba(239,83,80,0.15)', color: trade.type === 'Buy' ? '#26a69a' : '#ef5350' }}>{trade.type}</span>
+                            <span style={{ fontWeight: 'bold', color: '#fff' }}>{trade.asset}</span>
+                            {' '}
+                            <span style={{
+                              background: trade.type === 'Buy' ? '#22c55e' : '#ef4444',
+                              color: '#fff',
+                              borderRadius: '4px',
+                              padding: '2px 8px',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              textTransform: 'uppercase',
+                            }}>
+                              {trade.type}
+                            </span>
                           </td>
-                          <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>${trade.amount.toLocaleString()}</td>
-                          <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: pnl >= 0 ? '#26a69a' : '#ef5350' }}>{pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} USD</td>
-                          <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-                              <button onClick={() => handleEmergencyClose(trade.id)} style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ef5350', border: 'none', color: '#fff',
-                                padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em'
-                              }}>
-                                <AlertCircle size={12} strokeWidth={3} /> EMERGENCY CLOSE
-                              </button>
-                              <button onClick={() => router.push(`/sub-admin/${slug}/client/${trade.userId}`)} style={{
-                                padding: '5px 10px', background: 'transparent', border: '1px solid #FFD700', borderRadius: 4,
-                                color: '#FFD700', fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s'
-                              }}>
-                                DETAILS
-                              </button>
-                            </div>
+                          <td style={{ padding: '12px 16px', color: '#fff' }}>
+                            ${Number(trade.amount).toFixed(2)}
+                          </td>
+                          <td style={{
+                            padding: '12px 16px',
+                            color: Number(trade.profit_loss) >= 0 ? '#22c55e' : '#ef4444',
+                            fontWeight: 'bold',
+                          }}>
+                            {Number(trade.profit_loss) >= 0 ? '+' : ''}
+                            {Number(trade.profit_loss || 0).toFixed(2)} USD
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{
+                              background: trade.status === 'open' ? '#22c55e22' : '#6b728022',
+                              color: trade.status === 'open' ? '#22c55e' : '#9ca3af',
+                              border: `1px solid ${trade.status === 'open' ? '#22c55e' : '#6b7280'}`,
+                              borderRadius: '4px',
+                              padding: '2px 10px',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              textTransform: 'uppercase',
+                            }}>
+                              {trade.status === 'open' ? 'OPEN' : 'CLOSED'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <button
+                              onClick={() => router.push(`/sub-admin/${slug}/client/${trade.userId}`)}
+                              style={{
+                                background: 'transparent',
+                                border: '1px solid #FFD700',
+                                color: '#FFD700',
+                                borderRadius: '4px',
+                                padding: '4px 12px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                              }}
+                            >
+                              DETAILS
+                            </button>
                           </td>
                         </tr>
-                        );
-                      })}
+                      ))}
                     </tbody>
                   </table>
                 </div>
