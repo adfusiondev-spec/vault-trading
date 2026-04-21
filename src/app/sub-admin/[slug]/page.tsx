@@ -44,6 +44,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'deposits' | 'withdrawals' | 'subscription' | 'payment-settings'>('monitor')
   const [selectedTx, setSelectedTx] = useState<any>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [proofSignedUrl, setProofSignedUrl] = useState<string | null>(null)
   const [subscriptionPayments, setSubscriptionPayments] = useState<any[]>([])
   const [dbPackages, setDbPackages] = useState<DbPackage[]>([])
   // Auth State
@@ -296,6 +297,17 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     return () => { supabase.removeChannel(channel) }
   }, [router, slug])
 
+  useEffect(() => {
+    setProofSignedUrl(null)
+    if (detailModalOpen && selectedTx?.type === 'deposit' && selectedTx?.proof_of_payment_url) {
+      const supabase = createClient()
+      supabase.storage
+        .from('payment-proofs')
+        .createSignedUrl(selectedTx.proof_of_payment_url, 300)
+        .then(({ data }: any) => { if (data?.signedUrl) setProofSignedUrl(data.signedUrl) })
+    }
+  }, [selectedTx?.id, detailModalOpen])
+
   const { notifications, unreadCount, markAsRead } = useNotifications(companyProfile?.id || '', 'sub_admin')
 
   const handleLogout = async () => {
@@ -458,13 +470,6 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   const TransactionDetailModal = () => {
     const tx = selectedTx
-    const [proofUrl, setProofUrl] = useState<string | null>(null)
-    useEffect(() => {
-      if (!tx || !detailModalOpen) return
-      if (tx.type === 'deposit' && tx.proof_of_payment_url) {
-        getProofUrl(tx.proof_of_payment_url).then(url => { if (url) setProofUrl(url) })
-      }
-    }, [tx?.id, detailModalOpen])
     if (!detailModalOpen || !tx) return null
     const isDeposit = tx.type === 'deposit'
     const isWithdrawal = tx.type === 'withdrawal'
@@ -526,14 +531,19 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               {isDeposit && (
                 <>
                   <div style={{ color: '#FFD700', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px' }}>USER DEPOSIT INFORMATION</div>
-                  {proofUrl ? (
+                  {proofSignedUrl ? (
                     <div style={{ marginTop: '8px' }}>
                       <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>Payment Proof:</p>
-                      <img src={proofUrl} alt="Payment Proof" style={{ width: '100%', borderRadius: '8px', border: '1px solid #333', maxHeight: '220px', objectFit: 'contain', background: '#1a1a1a' }} />
-                      <a href={proofUrl} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: '8px', color: '#FFD700', fontSize: '12px', textDecoration: 'none' }}>Open Full Image ↗</a>
+                      <img src={proofSignedUrl} alt="Payment Proof" style={{ width: '100%', borderRadius: '8px', border: '1px solid #333', maxHeight: '220px', objectFit: 'contain', background: '#1a1a1a', display: 'block' }} />
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                        <a href={proofSignedUrl} target="_blank" rel="noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', background: 'transparent', border: '1px solid #374151', color: '#9ca3af', borderRadius: '6px', fontSize: '12px', textDecoration: 'none' }}>↗ Open</a>
+                        <a href={proofSignedUrl} download={`proof-${tx.id?.slice(0, 8) ?? 'payment'}.jpg`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', background: '#FFD700', border: 'none', color: '#000', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>↓ Download</a>
+                      </div>
                     </div>
                   ) : (
-                    <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '12px' }}>No payment proof uploaded.</p>
+                    <div style={{ marginTop: '12px', padding: '24px', background: '#111', borderRadius: '8px', border: '1px dashed #333', textAlign: 'center' }}>
+                      <p style={{ color: '#4b5563', fontSize: '13px', margin: 0 }}>No payment proof uploaded.</p>
+                    </div>
                   )}
                 </>
               )}
