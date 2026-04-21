@@ -536,6 +536,66 @@ const [savingProfile, setSavingProfile] = useState(false)
               </table>
             </div>
 
+          {/* Transaction History */}
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: '32px 0 16px', color: '#fff' }}>Transaction History</h3>
+          <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden', marginBottom: 8 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+              <thead style={{ background: 'rgba(0,0,0,0.3)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
+                <tr>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>DATE</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>TYPE</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>AMOUNT</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>DESTINATION</th>
+                  <th style={{ padding: '10px 16px', fontWeight: 600 }}>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clientTxs.length === 0 ? (
+                  <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>No transactions yet.</td></tr>
+                ) : clientTxs.map((tx: any) => (
+                  <tr key={tx.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: tx.status !== 'pending' ? 0.75 : 1 }}>
+                    <td style={{ padding: '10px 16px', color: '#8a8e9b', fontSize: 11 }}>
+                      {new Date(tx.created_at).toLocaleDateString('en-GB')}
+                    </td>
+                    <td style={{ padding: '10px 16px' }}>
+                      <span style={{ padding: '3px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: tx.type === 'deposit' ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)', color: tx.type === 'deposit' ? '#26a69a' : '#ef5350' }}>
+                        {tx.type.toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 16px', fontFamily: 'monospace', color: '#fff', fontWeight: 600 }}>${Number(tx.amount).toLocaleString()}</td>
+                    <td style={{ padding: '10px 16px', maxWidth: 180 }}>
+                      {tx.type === 'withdrawal' && (tx.destination_address || tx.payment_details) ? (
+                        <div style={{ fontSize: 11, color: '#ccc' }}>
+                          {tx.payment_details ? (
+                            <>
+                              {tx.payment_details.bank_name && <div style={{ color: '#8a8e9b' }}>{tx.payment_details.bank_name}</div>}
+                              {tx.payment_details.account_holder && <div>{tx.payment_details.account_holder}</div>}
+                              {tx.payment_details.iban && <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#FFD700' }}>{tx.payment_details.iban}</div>}
+                            </>
+                          ) : (
+                            <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#FFD700', wordBreak: 'break-all' }}>{tx.destination_address}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#555', fontSize: 10 }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '10px 16px' }}>
+                      <span style={{
+                        padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700,
+                        background: tx.status === 'approved' ? 'rgba(38,166,154,0.1)' : tx.status === 'rejected' ? 'rgba(239,83,80,0.1)' : 'rgba(255,215,0,0.1)',
+                        color: tx.status === 'approved' ? '#26a69a' : tx.status === 'rejected' ? '#ef5350' : '#FFD700',
+                        border: `1px solid ${tx.status === 'approved' ? 'rgba(38,166,154,0.3)' : tx.status === 'rejected' ? 'rgba(239,83,80,0.3)' : 'rgba(255,215,0,0.3)'}`
+                      }}>
+                        {tx.status.toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
           </div>
         </div>
 

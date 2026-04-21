@@ -862,13 +862,14 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                         <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.type}</th>
                         <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.amount}</th>
                         <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.proof_of_payment}</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>DESTINATION</th>
                         <th style={{ padding: '12px 16px', fontWeight: 600 }}>STATUS</th>
                         <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {allTransactions.length === 0 ? (
-                        <tr><td colSpan={7} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>No financial requests yet.</td></tr>
+                        <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>No financial requests yet.</td></tr>
                       ) : allTransactions.map((fin: any) => (
                         <tr key={fin.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: fin.status !== 'pending' ? 0.7 : 1 }}>
                           <td style={{ padding: '12px 16px', color: '#8a8e9b', fontSize: 11 }}>
@@ -888,6 +889,23 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                                 <Eye size={12}/> View
                               </button>
                             ) : <span style={{ color: '#555', fontSize: 10 }}>No Receipt</span>}
+                          </td>
+                          <td style={{ padding: '12px 16px', maxWidth: 200 }}>
+                            {fin.type === 'withdrawal' && (fin.destination_address || fin.payment_details) ? (
+                              <div style={{ fontSize: 11, color: '#ccc' }}>
+                                {fin.payment_details ? (
+                                  <>
+                                    {fin.payment_details.bank_name && <div style={{ color: '#8a8e9b' }}>{fin.payment_details.bank_name}</div>}
+                                    {fin.payment_details.account_holder && <div>{fin.payment_details.account_holder}</div>}
+                                    {fin.payment_details.iban && <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#FFD700' }}>{fin.payment_details.iban}</div>}
+                                  </>
+                                ) : (
+                                  <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#FFD700', wordBreak: 'break-all' }}>{fin.destination_address}</div>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ color: '#555', fontSize: 10 }}>—</span>
+                            )}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{

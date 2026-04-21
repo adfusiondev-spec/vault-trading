@@ -1217,7 +1217,13 @@ export default function Dashboard() {
                   
                   if (modalType === 'withdrawal') {
                     formData.append('destination_address', withdrawAddress || accountNumber)
-                    if (bankName) formData.append('bank_name', bankName)
+                    if (modalMethod === 'bank_transfer') {
+                      const paymentDetails: Record<string, string> = {}
+                      if (bankName) paymentDetails.bank_name = bankName
+                      if (accountHolder) paymentDetails.account_holder = accountHolder
+                      if (accountNumber) paymentDetails.iban = accountNumber
+                      formData.append('payment_details', JSON.stringify(paymentDetails))
+                    }
                   }
 
                   const result = await submitRequest(formData)

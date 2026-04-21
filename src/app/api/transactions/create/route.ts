@@ -12,6 +12,12 @@ export async function POST(request: NextRequest) {
   const currency = formData.get('currency') as string
   const payment_method = formData.get('payment_method') as string
   const proof_file = formData.get('proof') as File | null
+  const destination_address = formData.get('destination_address') as string | null
+  const payment_details_raw = formData.get('payment_details') as string | null
+  const payment_details = (() => {
+    if (!payment_details_raw) return null
+    try { return JSON.parse(payment_details_raw) } catch { return null }
+  })()
 
   // Validation
   if (!type || !amount || amount <= 0 || !currency || !payment_method) {
@@ -59,7 +65,9 @@ export async function POST(request: NextRequest) {
       currency,
       payment_method,
       proof_of_payment_url: proof_url,
-      status: 'pending'
+      status: 'pending',
+      destination_address: destination_address || null,
+      payment_details: payment_details || null,
     })
     .select()
     .single()
