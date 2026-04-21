@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Activity, DollarSign, LogOut, ShieldCheck, Check, X, Bell, Eye, Settings, CreditCard } from 'lucide-react'
+import { Users, Activity, DollarSign, LogOut, ShieldCheck, Check, X, Bell, Eye, Settings, CreditCard, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingTransactions } from '@/hooks/usePendingTransactions'
 import { useMarketData } from '@/hooks/useMarketData'
@@ -41,7 +41,9 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
 
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'financial' | 'subscription' | 'payment-settings'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'deposits' | 'withdrawals' | 'subscription' | 'payment-settings'>('monitor')
+  const [selectedTx, setSelectedTx] = useState<any>(null)
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [subscriptionPayments, setSubscriptionPayments] = useState<any[]>([])
   const [dbPackages, setDbPackages] = useState<DbPackage[]>([])
   // Auth State
@@ -454,12 +456,114 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   if (!isAuthorized) return null
 
+  const TransactionDetailModal = () => {
+    const tx = selectedTx
+    const [proofUrl, setProofUrl] = useState<string | null>(null)
+    useEffect(() => {
+      if (!tx || !detailModalOpen) return
+      if (tx.type === 'deposit' && tx.proof_of_payment_url) {
+        getProofUrl(tx.proof_of_payment_url).then(url => { if (url) setProofUrl(url) })
+      }
+    }, [tx?.id, detailModalOpen])
+    if (!detailModalOpen || !tx) return null
+    const isDeposit = tx.type === 'deposit'
+    const isWithdrawal = tx.type === 'withdrawal'
+    const row = (label: string, value: any) => (
+      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1f1f1f', padding: '10px 0', gap: '16px' }}>
+        <span style={{ color: '#9ca3af', fontSize: '13px', minWidth: '130px' }}>{label}</span>
+        <span style={{ color: '#fff', fontSize: '13px', fontWeight: '600', textAlign: 'right', wordBreak: 'break-all' }}>{value ?? '—'}</span>
+      </div>
+    )
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+        onClick={() => setDetailModalOpen(false)}>
+        <div style={{ background: '#0f0f0f', border: '1px solid #FFD700', borderRadius: '14px', width: '100%', maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto', padding: '28px' }}
+          onClick={(e) => e.stopPropagation()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <div>
+              <h2 style={{ color: '#FFD700', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
+                {isDeposit ? '↓ Deposit Details' : '↑ Withdrawal Details'}
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '12px', margin: '4px 0 0' }}>
+                {isDeposit ? 'Deposit' : 'Withdraw'} Via {tx.payment_method?.toUpperCase() || '—'}
+              </p>
+            </div>
+            <button onClick={() => setDetailModalOpen(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <div style={{ color: '#FFD700', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px' }}>TRANSACTION INFO</div>
+              {row('Date', new Date(tx.created_at).toLocaleString())}
+              {row('Transaction ID', tx.id?.slice(0, 16) + '...')}
+              {row('Client', tx.profiles?.full_name || tx.profiles?.email || '—')}
+              {row('Method', tx.payment_method?.toUpperCase())}
+              {row('Amount', `$${Number(tx.amount).toFixed(2)} USD`)}
+              {row('Status', <span style={{ color: tx.status === 'approved' ? '#22c55e' : tx.status === 'rejected' ? '#ef4444' : '#f59e0b', fontWeight: 'bold', textTransform: 'uppercase' }}>{tx.status}</span>)}
+            </div>
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              {isWithdrawal && (
+                <>
+                  <div style={{ color: '#FFD700', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px' }}>USER WITHDRAW INFORMATION</div>
+                  {tx.payment_method?.toLowerCase().includes('usdt') && <>
+                    {row('Network', tx.payment_details?.network || 'TRC20')}
+                    {row('Amount', `$${Number(tx.amount).toFixed(2)}`)}
+                    {row('Wallet Address', <span style={{ fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer', color: '#FFD700' }} onClick={() => navigator.clipboard.writeText(tx.destination_address || '')} title="Click to copy">{tx.destination_address || '—'} {tx.destination_address ? '⎘' : ''}</span>)}
+                  </>}
+                  {tx.payment_method?.toLowerCase().includes('btc') && <>
+                    {row('Amount', `$${Number(tx.amount).toFixed(2)}`)}
+                    {row('BTC Address', <span style={{ fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer', color: '#FFD700' }} onClick={() => navigator.clipboard.writeText(tx.destination_address || '')} title="Click to copy">{tx.destination_address || '—'} {tx.destination_address ? '⎘' : ''}</span>)}
+                  </>}
+                  {tx.payment_method?.toLowerCase().includes('bank') && <>
+                    {row('Bank Name', tx.payment_details?.bank_name)}
+                    {row('Account Holder', tx.payment_details?.account_holder)}
+                    {row('RIB / IBAN', <span style={{ fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer', color: '#FFD700' }} onClick={() => navigator.clipboard.writeText(tx.payment_details?.iban || '')} title="Click to copy">{tx.payment_details?.iban || '—'} {tx.payment_details?.iban ? '⎘' : ''}</span>)}
+                  </>}
+                  {!tx.destination_address && !tx.payment_details && (
+                    <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '12px' }}>No destination info provided by client.</p>
+                  )}
+                </>
+              )}
+              {isDeposit && (
+                <>
+                  <div style={{ color: '#FFD700', fontSize: '11px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '8px' }}>USER DEPOSIT INFORMATION</div>
+                  {proofUrl ? (
+                    <div style={{ marginTop: '8px' }}>
+                      <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>Payment Proof:</p>
+                      <img src={proofUrl} alt="Payment Proof" style={{ width: '100%', borderRadius: '8px', border: '1px solid #333', maxHeight: '220px', objectFit: 'contain', background: '#1a1a1a' }} />
+                      <a href={proofUrl} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', marginTop: '8px', color: '#FFD700', fontSize: '12px', textDecoration: 'none' }}>Open Full Image ↗</a>
+                    </div>
+                  ) : (
+                    <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '12px' }}>No payment proof uploaded.</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          {tx.status === 'pending' && (
+            <div style={{ display: 'flex', gap: '12px', marginTop: '28px' }}>
+              <button onClick={async () => { await handleFinancialAction(tx.id, 'approve'); setDetailModalOpen(false) }} style={{ flex: 1, padding: '12px', background: 'transparent', border: '2px solid #22c55e', color: '#22c55e', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                ✓ Approve
+              </button>
+              <button onClick={async () => { await handleFinancialAction(tx.id, 'reject'); setDetailModalOpen(false) }} style={{ flex: 1, padding: '12px', background: 'transparent', border: '2px solid #ef4444', color: '#ef4444', borderRadius: '8px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                ✕ Reject
+              </button>
+            </div>
+          )}
+          {tx.status !== 'pending' && (
+            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '13px', marginTop: '20px' }}>This transaction has been {tx.status}.</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{
       minHeight: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
       background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'auto'
     }}>
-      
+      <TransactionDetailModal />
+
       {/* ── Top Navigation Bar ── */}
       <div style={{
         height: 60, flexShrink: 0, borderBottom: '1px solid var(--border)',
@@ -537,7 +641,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
           {[
             { id: 'monitor', icon: Activity, label: t.trade_monitor },
             { id: 'leads', icon: Users, label: t.clients },
-            { id: 'financial', icon: DollarSign, label: t.financial_desk },
+            { id: 'deposits', icon: ArrowDownCircle, label: 'Deposits' },
+            { id: 'withdrawals', icon: ArrowUpCircle, label: 'Withdrawals' },
             { id: 'subscription', icon: CreditCard, label: 'Subscription' },
             { id: 'payment-settings', icon: Settings, label: 'Payment Settings' },
           ].map(item => {
@@ -842,109 +947,109 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               </div>
             )}
 
-            {/* ── Financial Desk ── */}
-            {activeTab === 'financial' && (
-              <div className="crm-section fade-in">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#FFD700', letterSpacing: '0.05em' }}>FINANCIAL REQUESTS</h2>
-                  {pending.length > 0 && (
-                    <span style={{ background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>
-                      {pending.length} PENDING
-                    </span>
-                  )}
+            {/* ── Deposits Tab ── */}
+            {activeTab === 'deposits' && (
+              <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h2 style={{ color: '#FFD700', fontSize: '18px', fontWeight: 'bold', margin: 0, letterSpacing: '1px' }}>DEPOSIT REQUESTS</h2>
+                  <span style={{ background: '#1a1a1a', border: '1px solid #333', color: '#9ca3af', borderRadius: '20px', padding: '4px 14px', fontSize: '13px' }}>
+                    {allTransactions.filter((t: any) => t.type === 'deposit' && t.status === 'pending').length} Pending
+                  </span>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
-                    <thead style={{ background: 'rgba(0,0,0,0.2)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
-                      <tr>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>DATE</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.email}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.type}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.amount}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>{t.proof_of_payment}</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>DESTINATION</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600 }}>STATUS</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>ACTIONS</th>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #222' }}>
+                        {['DATE', 'CLIENT', 'AMOUNT', 'METHOD', 'STATUS', 'DETAIL'].map(h => (
+                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '11px', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {allTransactions.length === 0 ? (
-                        <tr><td colSpan={8} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>No financial requests yet.</td></tr>
-                      ) : allTransactions.map((fin: any) => (
-                        <tr key={fin.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', opacity: fin.status !== 'pending' ? 0.7 : 1 }}>
-                          <td style={{ padding: '12px 16px', color: '#8a8e9b', fontSize: 11 }}>
-                            {new Date(fin.created_at).toLocaleDateString('en-GB')}
+                      {allTransactions.filter((t: any) => t.type === 'deposit').map((tx: any) => (
+                        <tr key={tx.id} style={{ borderBottom: '1px solid #111', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#111')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                          <td style={{ padding: '12px 14px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{new Date(tx.created_at).toLocaleDateString()}</td>
+                          <td style={{ padding: '12px 14px', color: '#fff' }}>{tx.profiles?.full_name || tx.profiles?.email || '—'}</td>
+                          <td style={{ padding: '12px 14px', color: '#fff', fontWeight: '600' }}>${Number(tx.amount).toFixed(2)}<span style={{ color: '#6b7280', fontSize: '11px', marginLeft: '4px' }}>USD</span></td>
+                          <td style={{ padding: '12px 14px', color: '#9ca3af' }}>{tx.payment_method?.toUpperCase() || '—'}</td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', background: tx.status === 'approved' ? 'rgba(34,197,94,0.15)' : tx.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: tx.status === 'approved' ? '#22c55e' : tx.status === 'rejected' ? '#ef4444' : '#f59e0b', border: `1px solid ${tx.status === 'approved' ? '#22c55e' : tx.status === 'rejected' ? '#ef4444' : '#f59e0b'}` }}>{tx.status}</span>
                           </td>
-                          <td style={{ padding: '12px 16px', fontWeight: 500 }}>{fin.profiles?.email || 'Unknown'}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{ padding: '4px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, background: fin.type === 'deposit' ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)', color: fin.type === 'deposit' ? '#26a69a' : '#ef5350' }}>{fin.type.toUpperCase()}</span>
-                          </td>
-                          <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#fff', fontWeight: 600 }}>${Number(fin.amount).toLocaleString()} <span style={{ color: '#8a8e9b', fontSize: 10 }}>{fin.currency}</span></td>
-                          <td style={{ padding: '12px 16px' }}>
-                            {fin.proof_of_payment_url ? (
-                              <button onClick={async () => {
-                                const url = await getProofUrl(fin.proof_of_payment_url)
-                                if (url) window.open(url, '_blank')
-                              }} style={{ background: 'transparent', border: '1px solid #787b86', display: 'flex', alignItems: 'center', gap: 6, color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 10, cursor: 'pointer' }}>
-                                <Eye size={12}/> View
-                              </button>
-                            ) : <span style={{ color: '#555', fontSize: 10 }}>No Receipt</span>}
-                          </td>
-                          <td style={{ padding: '12px 16px', maxWidth: 200 }}>
-                            {fin.type === 'withdrawal' && (fin.destination_address || fin.payment_details) ? (
-                              <div style={{ fontSize: 11, color: '#ccc' }}>
-                                {fin.payment_details ? (
-                                  <>
-                                    {fin.payment_details.bank_name && <div style={{ color: '#8a8e9b' }}>{fin.payment_details.bank_name}</div>}
-                                    {fin.payment_details.account_holder && <div>{fin.payment_details.account_holder}</div>}
-                                    {fin.payment_details.iban && <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#FFD700' }}>{fin.payment_details.iban}</div>}
-                                  </>
-                                ) : (
-                                  <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#FFD700', wordBreak: 'break-all' }}>{fin.destination_address}</div>
-                                )}
-                              </div>
-                            ) : (
-                              <span style={{ color: '#555', fontSize: 10 }}>—</span>
-                            )}
-                          </td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <span style={{
-                              padding: '3px 8px', borderRadius: 12, fontSize: 10, fontWeight: 700,
-                              background: fin.status === 'approved' ? 'rgba(38,166,154,0.1)' : fin.status === 'rejected' ? 'rgba(239,83,80,0.1)' : 'rgba(255,215,0,0.1)',
-                              color: fin.status === 'approved' ? '#26a69a' : fin.status === 'rejected' ? '#ef5350' : '#FFD700',
-                              border: `1px solid ${fin.status === 'approved' ? 'rgba(38,166,154,0.3)' : fin.status === 'rejected' ? 'rgba(239,83,80,0.3)' : 'rgba(255,215,0,0.3)'}`
-                            }}>
-                              {fin.status.toUpperCase()}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                            {fin.status === 'pending' ? (
-                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                <button onClick={() => handleFinancialAction(fin.id, 'reject')} style={{
-                                  width: 32, height: 32, borderRadius: 6, border: '1px solid rgba(239,83,80,0.3)', background: 'rgba(239,83,80,0.1)',
-                                  color: '#ef5350', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-                                }}>
-                                  <X size={16} strokeWidth={2.5} />
-                                </button>
-                                <button onClick={() => handleFinancialAction(fin.id, 'approve')} style={{
-                                  display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', height: 32, borderRadius: 6,
-                                  border: '1px solid #26a69a', background: 'rgba(38,166,154,0.15)',
-                                  color: '#26a69a', fontSize: 12, fontWeight: 700, cursor: 'pointer'
-                                }}>
-                                  <Check size={16} strokeWidth={2.5} /> APPROVE
-                                </button>
-                              </div>
-                            ) : (
-                              <span style={{ color: '#555', fontSize: 11 }}>Processed</span>
-                            )}
+                          <td style={{ padding: '12px 14px' }}>
+                            <button onClick={() => { setSelectedTx(tx); setDetailModalOpen(true) }} style={{ padding: '6px 16px', background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>DETAIL</button>
                           </td>
                         </tr>
                       ))}
+                      {allTransactions.filter((t: any) => t.type === 'deposit').length === 0 && (
+                        <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: '14px' }}>No deposit requests</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
+
+            {/* ── Withdrawals Tab ── */}
+            {activeTab === 'withdrawals' && (
+              <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h2 style={{ color: '#FFD700', fontSize: '18px', fontWeight: 'bold', margin: 0, letterSpacing: '1px' }}>WITHDRAWAL REQUESTS</h2>
+                  <span style={{ background: '#1a1a1a', border: '1px solid #333', color: '#9ca3af', borderRadius: '20px', padding: '4px 14px', fontSize: '13px' }}>
+                    {allTransactions.filter((t: any) => t.type === 'withdrawal' && t.status === 'pending').length} Pending
+                  </span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #222' }}>
+                        {['DATE', 'CLIENT', 'AMOUNT', 'METHOD', 'DESTINATION', 'STATUS', 'DETAIL'].map(h => (
+                          <th key={h} style={{ padding: '10px 14px', textAlign: 'left', color: '#6b7280', fontWeight: '600', fontSize: '11px', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allTransactions.filter((t: any) => t.type === 'withdrawal').map((tx: any) => (
+                        <tr key={tx.id} style={{ borderBottom: '1px solid #111' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#111')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                          <td style={{ padding: '12px 14px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{new Date(tx.created_at).toLocaleDateString()}</td>
+                          <td style={{ padding: '12px 14px', color: '#fff' }}>{tx.profiles?.full_name || tx.profiles?.email || '—'}</td>
+                          <td style={{ padding: '12px 14px', color: '#fff', fontWeight: '600' }}>${Number(tx.amount).toFixed(2)}<span style={{ color: '#6b7280', fontSize: '11px', marginLeft: '4px' }}>USD</span></td>
+                          <td style={{ padding: '12px 14px', color: '#9ca3af' }}>{tx.payment_method?.toUpperCase() || '—'}</td>
+                          <td style={{ padding: '12px 14px', maxWidth: '180px' }}>
+                            {tx.destination_address ? (
+                              <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#FFD700', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }} title={tx.destination_address}>
+                                {tx.destination_address.slice(0, 10)}...{tx.destination_address.slice(-6)}
+                              </span>
+                            ) : tx.payment_details?.bank_name ? (
+                              <div style={{ fontSize: '11px', lineHeight: '1.5' }}>
+                                <div style={{ color: '#fff' }}>{tx.payment_details.bank_name}</div>
+                                <div style={{ color: '#9ca3af' }}>{tx.payment_details.account_holder}</div>
+                                <div style={{ color: '#6b7280', fontFamily: 'monospace' }}>{tx.payment_details.iban?.slice(0, 12)}...</div>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#4b5563' }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', background: tx.status === 'approved' ? 'rgba(34,197,94,0.15)' : tx.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: tx.status === 'approved' ? '#22c55e' : tx.status === 'rejected' ? '#ef4444' : '#f59e0b', border: `1px solid ${tx.status === 'approved' ? '#22c55e' : tx.status === 'rejected' ? '#ef4444' : '#f59e0b'}` }}>{tx.status}</span>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <button onClick={() => { setSelectedTx(tx); setDetailModalOpen(true) }} style={{ padding: '6px 16px', background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}>DETAIL</button>
+                          </td>
+                        </tr>
+                      ))}
+                      {allTransactions.filter((t: any) => t.type === 'withdrawal').length === 0 && (
+                        <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#4b5563', fontSize: '14px' }}>No withdrawal requests</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
 
             {/* ── Subscription Tab ── */}
             {activeTab === 'subscription' && (
