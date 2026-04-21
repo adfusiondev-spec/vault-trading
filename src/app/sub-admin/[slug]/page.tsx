@@ -10,6 +10,7 @@ import { useMarketData } from '@/hooks/useMarketData'
 import { useNotifications } from '@/hooks/useNotifications'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import SubAdminPaymentSettingsPanel from '@/components/sub-admin/PaymentSettingsPanel'
 
 // Mock Data
 const INITIAL_TRADES: any[] = []
@@ -538,6 +539,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             { id: 'leads', icon: Users, label: t.clients },
             { id: 'financial', icon: DollarSign, label: t.financial_desk },
             { id: 'subscription', icon: CreditCard, label: 'Subscription' },
+            { id: 'payment-settings', icon: Settings, label: 'Payment Settings' },
           ].map(item => {
             const Icon = item.icon
             const isActive = activeTab === item.id
@@ -984,6 +986,13 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* ── Payment Settings ── */}
+            {activeTab === 'payment-settings' && (
+              <div className="crm-section fade-in" style={{ padding: 24 }}>
+                <SubAdminPaymentSettingsPanel />
               </div>
             )}
 
