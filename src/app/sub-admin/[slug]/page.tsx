@@ -45,6 +45,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const [selectedTx, setSelectedTx] = useState<any>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [proofSignedUrl, setProofSignedUrl] = useState<string | null>(null)
+  const [proofDownloading, setProofDownloading] = useState(false)
   const [subscriptionPayments, setSubscriptionPayments] = useState<any[]>([])
   const [dbPackages, setDbPackages] = useState<DbPackage[]>([])
   // Auth State
@@ -381,6 +382,29 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   }
 
 
+  const handleDownloadProof = async () => {
+    if (!proofSignedUrl) return
+    setProofDownloading(true)
+    try {
+      const response = await fetch(proofSignedUrl)
+      const blob = await response.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      const ext = blob.type.includes('png') ? 'png' : blob.type.includes('pdf') ? 'pdf' : 'jpg'
+      link.download = `proof-${selectedTx?.id?.slice(0, 8) ?? 'payment'}.${ext}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 3000)
+    } catch (err) {
+      console.error('Download failed:', err)
+      window.open(proofSignedUrl, '_blank')
+    } finally {
+      setProofDownloading(false)
+    }
+  }
+
   const handleFinancialAction = async (id: string, action: 'approve' | 'reject') => {
     const newStatus = action === 'approve' ? 'approved' : 'rejected' // matching database enum
     const result = await reviewTransaction(id, newStatus)
@@ -537,7 +561,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                       <img src={proofSignedUrl} alt="Payment Proof" style={{ width: '100%', borderRadius: '8px', border: '1px solid #333', maxHeight: '220px', objectFit: 'contain', background: '#1a1a1a', display: 'block' }} />
                       <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                         <a href={proofSignedUrl} target="_blank" rel="noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', background: 'transparent', border: '1px solid #374151', color: '#9ca3af', borderRadius: '6px', fontSize: '12px', textDecoration: 'none' }}>↗ Open</a>
-                        <a href={proofSignedUrl} download={`proof-${tx.id?.slice(0, 8) ?? 'payment'}.jpg`} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', background: '#FFD700', border: 'none', color: '#000', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', textDecoration: 'none' }}>↓ Download</a>
+                        <button onClick={handleDownloadProof} disabled={proofDownloading} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', background: proofDownloading ? '#b8950a' : '#FFD700', border: 'none', color: '#000', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: proofDownloading ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>{proofDownloading ? '...' : '↓ Download'}</button>
                       </div>
                     </div>
                   ) : (
