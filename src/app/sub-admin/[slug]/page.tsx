@@ -120,6 +120,9 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
   const [selectedPackage, setSelectedPackage] = useState<string>('pro')
   const [trialOption, setTrialOption] = useState('none')
+  // Admin payment settings (fetched when modal opens)
+  const [adminPaymentSettings, setAdminPaymentSettings] = useState<any>(null)
+  const [adminSettingsLoading, setAdminSettingsLoading] = useState(false)
 
   const activePkg = dbPackages.find(p => p.key === selectedPackage)
 
@@ -345,6 +348,21 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
       await supabase.auth.signOut()
     } catch {}
     window.location.href = '/login'
+  }
+
+  // ── Fetch admin payment settings (used by both Subscription buttons) ──
+  const fetchAdminPaymentSettings = async () => {
+    if (adminPaymentSettings || adminSettingsLoading) return
+    setAdminSettingsLoading(true)
+    try {
+      const res = await fetch('/api/payment-settings/admin')
+      const json = await res.json()
+      if (json.settings) setAdminPaymentSettings(json.settings)
+    } catch (e) {
+      console.error('Failed to load admin payment settings:', e)
+    } finally {
+      setAdminSettingsLoading(false)
+    }
   }
 
   const handleSubscriptionPayment = async (e: React.FormEvent) => {
@@ -687,7 +705,10 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             )}
           </div>
 
-          <button onClick={() => setIsPaymentModalOpen(true)} style={{
+          <button onClick={async () => {
+            setIsPaymentModalOpen(true)
+            await fetchAdminPaymentSettings()
+          }} style={{
             display: 'flex', alignItems: 'center', gap: 6, background: '#FFD700',
             border: 'none', color: '#000', padding: '6px 16px',
             borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all 0.2s'
@@ -1132,7 +1153,10 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                   <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#FFD700', letterSpacing: '0.05em' }}>SUBSCRIPTION PAYMENTS</h2>
                   <button
-                    onClick={() => setIsPaymentModalOpen(true)}
+                    onClick={async () => {
+                      setIsPaymentModalOpen(true)
+                      await fetchAdminPaymentSettings()
+                    }}
                     style={{ padding: '8px 20px', background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', color: '#FFD700', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                   >
                     + NEW PAYMENT
@@ -1369,51 +1393,100 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               </div>
               )}
 
-              {/* Dynamic payment details panel — hidden for trial */}
-              {trialOption === 'none' && paymentMethod === 'bank_transfer' && (
+              {/* Dynamic payment details panel — fetched from Admin payment_settings */}
+              {trialOption === 'none' && adminSettingsLoading && (
+                <div style={{ padding: 16, textAlign: 'center', color: '#8a8e9b', fontSize: 12 }}>
+                  ⏳ Loading payment details...
+                </div>
+              )}
+
+              {trialOption === 'none' && !adminSettingsLoading && !adminPaymentSettings && paymentMethod && (
+                <div style={{ background: 'rgba(239,83,80,0.05)', border: '1px solid rgba(239,83,80,0.2)', borderRadius: 8, padding: 14 }}>
+                  <div style={{ fontSize: 12, color: '#ef5350', fontWeight: 600 }}>⚠ Payment details not configured yet</div>
+                  <div style={{ fontSize: 11, color: '#8a8e9b', marginTop: 4 }}>Please contact the platform administrator.</div>
+                </div>
+              )}
+
+              {trialOption === 'none' && paymentMethod === 'bank_transfer' && adminPaymentSettings?.bank_is_active && (
                 <div style={{ background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 8, padding: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', marginBottom: 10, letterSpacing: '0.05em' }}>BANK TRANSFER DETAILS</div>
-                  <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
-                    <div><span style={{ color: '#8a8e9b' }}>Bank:</span> Al Rajhi Bank</div>
-                    <div><span style={{ color: '#8a8e9b' }}>Account Name:</span> Nokhba Platform LLC</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#8a8e9b' }}>IBAN:</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 11 }}>SA1234567890123456789012</span>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText('SA1234567890123456789012') }}
-                        style={{ background: '#FFD700', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>COPY</button>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', marginBottom: 12, letterSpacing: '0.05em' }}>🏦 BANK TRANSFER DETAILS</div>
+                  {adminPaymentSettings.bank_name ? (
+                    <div style={{ fontSize: 12, color: '#c0c3ce', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div><span style={{ color: '#8a8e9b', marginRight: 8 }}>Bank:</span>{adminPaymentSettings.bank_name}</div>
+                      {adminPaymentSettings.bank_account_holder && (
+                        <div><span style={{ color: '#8a8e9b', marginRight: 8 }}>Account Name:</span>{adminPaymentSettings.bank_account_holder}</div>
+                      )}
+                      {adminPaymentSettings.bank_rib && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ color: '#8a8e9b' }}>RIB / IBAN:</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{adminPaymentSettings.bank_rib}</span>
+                          <button type="button" onClick={() => navigator.clipboard.writeText(adminPaymentSettings.bank_rib)}
+                            style={{ background: '#FFD700', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>COPY</button>
+                        </div>
+                      )}
                     </div>
-                    <div><span style={{ color: '#8a8e9b' }}>SWIFT:</span> RJHISARI</div>
-                  </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#8a8e9b' }}>Bank details not configured. Contact admin.</div>
+                  )}
                 </div>
               )}
 
-              {trialOption === 'none' && paymentMethod === 'crypto_usdt' && (
+              {trialOption === 'none' && paymentMethod === 'bank_transfer' && adminPaymentSettings && !adminPaymentSettings.bank_is_active && (
+                <div style={{ background: 'rgba(239,83,80,0.05)', border: '1px solid rgba(239,83,80,0.2)', borderRadius: 8, padding: 14 }}>
+                  <div style={{ fontSize: 12, color: '#ef5350', fontWeight: 600 }}>⚠ Bank Transfer is currently disabled</div>
+                  <div style={{ fontSize: 11, color: '#8a8e9b', marginTop: 4 }}>Please choose another payment method.</div>
+                </div>
+              )}
+
+              {trialOption === 'none' && paymentMethod === 'crypto_usdt' && adminPaymentSettings?.usdt_is_active && (
                 <div style={{ background: 'rgba(38,166,154,0.05)', border: '1px solid rgba(38,166,154,0.2)', borderRadius: 8, padding: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#26a69a', marginBottom: 10, letterSpacing: '0.05em' }}>USDT (TRC-20) DETAILS</div>
-                  <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
-                    <div><span style={{ color: '#8a8e9b' }}>Network:</span> TRON (TRC-20)</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#8a8e9b' }}>Address:</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 10, wordBreak: 'break-all' }}>TXxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText('TXxxxxxxxxxxxxxxxxxxxxxxxxxxx') }}
-                        style={{ background: '#26a69a', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>COPY</button>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#26a69a', marginBottom: 12, letterSpacing: '0.05em' }}>💎 USDT ({adminPaymentSettings.usdt_network || 'TRC20'}) DETAILS</div>
+                  {adminPaymentSettings.usdt_address ? (
+                    <div style={{ fontSize: 12, color: '#c0c3ce', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div><span style={{ color: '#8a8e9b', marginRight: 8 }}>Network:</span>{adminPaymentSettings.usdt_network || 'TRC20'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ color: '#8a8e9b' }}>Address:</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 10, wordBreak: 'break-all' }}>{adminPaymentSettings.usdt_address}</span>
+                        <button type="button" onClick={() => navigator.clipboard.writeText(adminPaymentSettings.usdt_address)}
+                          style={{ background: '#26a69a', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>COPY</button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#8a8e9b' }}>USDT address not configured. Contact admin.</div>
+                  )}
                 </div>
               )}
 
-              {trialOption === 'none' && paymentMethod === 'crypto_btc' && (
+              {trialOption === 'none' && paymentMethod === 'crypto_usdt' && adminPaymentSettings && !adminPaymentSettings.usdt_is_active && (
+                <div style={{ background: 'rgba(239,83,80,0.05)', border: '1px solid rgba(239,83,80,0.2)', borderRadius: 8, padding: 14 }}>
+                  <div style={{ fontSize: 12, color: '#ef5350', fontWeight: 600 }}>⚠ USDT payments are currently disabled</div>
+                  <div style={{ fontSize: 11, color: '#8a8e9b', marginTop: 4 }}>Please choose another payment method.</div>
+                </div>
+              )}
+
+              {trialOption === 'none' && paymentMethod === 'crypto_btc' && adminPaymentSettings?.btc_is_active && (
                 <div style={{ background: 'rgba(255,152,0,0.05)', border: '1px solid rgba(255,152,0,0.2)', borderRadius: 8, padding: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#FF9800', marginBottom: 10, letterSpacing: '0.05em' }}>BITCOIN (BTC) DETAILS</div>
-                  <div style={{ fontSize: 12, color: '#c0c3ce', lineHeight: 2 }}>
-                    <div><span style={{ color: '#8a8e9b' }}>Network:</span> Bitcoin (BTC)</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ color: '#8a8e9b' }}>Address:</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 10, wordBreak: 'break-all' }}>bc1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText('bc1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') }}
-                        style={{ background: '#FF9800', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer' }}>COPY</button>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#FF9800', marginBottom: 12, letterSpacing: '0.05em' }}>₿ BITCOIN (BTC) DETAILS</div>
+                  {adminPaymentSettings.btc_address ? (
+                    <div style={{ fontSize: 12, color: '#c0c3ce', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div><span style={{ color: '#8a8e9b', marginRight: 8 }}>Network:</span>Bitcoin (BTC)</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ color: '#8a8e9b' }}>Address:</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 10, wordBreak: 'break-all' }}>{adminPaymentSettings.btc_address}</span>
+                        <button type="button" onClick={() => navigator.clipboard.writeText(adminPaymentSettings.btc_address)}
+                          style={{ background: '#FF9800', color: '#000', border: 'none', borderRadius: 3, padding: '2px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>COPY</button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#8a8e9b' }}>BTC address not configured. Contact admin.</div>
+                  )}
+                </div>
+              )}
+
+              {trialOption === 'none' && paymentMethod === 'crypto_btc' && adminPaymentSettings && !adminPaymentSettings.btc_is_active && (
+                <div style={{ background: 'rgba(239,83,80,0.05)', border: '1px solid rgba(239,83,80,0.2)', borderRadius: 8, padding: 14 }}>
+                  <div style={{ fontSize: 12, color: '#ef5350', fontWeight: 600 }}>⚠ Bitcoin payments are currently disabled</div>
+                  <div style={{ fontSize: 11, color: '#8a8e9b', marginTop: 4 }}>Please choose another payment method.</div>
                 </div>
               )}
 
