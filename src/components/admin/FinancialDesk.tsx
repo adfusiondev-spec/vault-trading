@@ -52,6 +52,20 @@ export function FinancialDesk() {
       setSelectedSubPayment((prev: any) => prev ? { ...prev, status: newStatus } : prev)
     }
 
+    if (newStatus === 'Approved' && payment?.sub_admin_id && payment?.package) {
+      const newPackage = payment.package as string
+      const profileUpdate: Record<string, any> = { subscription_package: newPackage }
+      if (newPackage === 'Trial_1day') {
+        const now = new Date().toISOString()
+        profileUpdate.trial_started_at = now
+        profileUpdate.expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      } else {
+        profileUpdate.trial_started_at = null
+        profileUpdate.expires_at = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      }
+      await (supabase.from('profiles') as any).update(profileUpdate).eq('id', payment.sub_admin_id)
+    }
+
     if (payment?.sub_admin_id) {
       const isApproved = newStatus === 'Approved'
       await (supabase.from('notifications') as any).insert({

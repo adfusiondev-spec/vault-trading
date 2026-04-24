@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 2. Create the new tenant user using service role
-  const { email, password, full_name, company_name, slug } = await request.json()
+  const { email, password, full_name, company_name, slug, subscriptionPackage } = await request.json()
   
   if (!email || !password || !full_name) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -57,14 +57,25 @@ export async function POST(request: NextRequest) {
   }
 
   // 3. Update role to sub_admin (profile was auto-created as 'trader' by trigger)
+  const now = new Date().toISOString()
+  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+  const profileUpdate: any = {
+    role: 'sub_admin',
+    assigned_to: user.id,
+    company_slug: slug,
+    encrypted_password: encryptPassword(password),
+    subscription_package: subscriptionPackage || 'Trial_1day',
+  }
+
+  if (profileUpdate.subscription_package === 'Trial_1day') {
+    profileUpdate.trial_started_at = now
+    profileUpdate.expires_at = expires
+  }
+
   const { error: roleError } = await adminClient
     .from('profiles')
-    .update({
-      role: 'sub_admin',
-      assigned_to: user.id, // link to super_admin
-      company_slug: slug,
-      encrypted_password: encryptPassword(password),
-    })
+    .update(profileUpdate)
     .eq('id', newUser.user.id)
 
   if (roleError) {

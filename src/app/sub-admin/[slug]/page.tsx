@@ -11,6 +11,7 @@ import { useNotifications } from '@/hooks/useNotifications'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import SubAdminPaymentSettingsPanel from '@/components/sub-admin/PaymentSettingsPanel'
+import { isTrialExpired } from '@/lib/trial'
 
 // Mock Data
 const INITIAL_TRADES: any[] = []
@@ -20,10 +21,8 @@ const INITIAL_LEADS: any[] = []
 type DbPackage = { id: string; key: string; label: string; monthly_price: number; yearly_price: number }
 
 const TRIAL_OPTIONS = [
-  { value: 'none',       label: 'None',         days: 0 },
-  { value: 'trial_1day', label: 'Trial 1 day',  days: 1 },
-  { value: 'trial_3days',label: 'Trial 3 days', days: 3 },
-  { value: 'trial_7days',label: 'Trial 7 days', days: 7 },
+  { value: 'none',       label: 'None',        days: 0 },
+  { value: 'trial_1day', label: 'Trial 1 day', days: 1 },
 ] as const
 
 const BILLING_CYCLES = [
@@ -74,7 +73,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
-  const [companyProfile, setCompanyProfile] = useState<{ id: string, full_name: string, invite_token?: string } | null>(null)
+  const [companyProfile, setCompanyProfile] = useState<{ id: string, full_name: string, invite_token?: string, subscription_package?: string | null, expires_at?: string | null } | null>(null)
 
   // State
   const [trades, setTrades] = useState(INITIAL_TRADES)
@@ -162,7 +161,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         if (impersonatedId || localRole === 'sub_admin') {
           const { data: company } = await (supabase as any)
             .from('profiles')
-            .select('id, full_name, invite_token')
+            .select('id, full_name, invite_token, subscription_package, expires_at')
             .eq('company_slug', slug)
             .eq('role', 'sub_admin')
             .single()
@@ -195,7 +194,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         if (profile.role === 'super_admin') {
           const { data: company } = await (supabase as any)
             .from('profiles')
-            .select('id, full_name, invite_token')
+            .select('id, full_name, invite_token, subscription_package, expires_at')
             .eq('company_slug', slug)
             .eq('role', 'sub_admin')
             .single()
@@ -533,6 +532,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   if (!isAuthorized) return null
 
+  const trialExpired = isTrialExpired(companyProfile ?? {})
+
   const TransactionDetailModal = () => {
     const tx = selectedTx
     if (!detailModalOpen || !tx) return null
@@ -657,6 +658,49 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     }}>
       <TransactionDetailModal />
 
+      {trialExpired && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.85)',
+          zIndex: 998,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{
+            background: '#0f0f0f',
+            border: '1px solid #FFD700',
+            borderRadius: '16px',
+            padding: '40px',
+            maxWidth: '480px',
+            width: '90%',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏰</div>
+            <h2 style={{ color: '#FFD700', fontSize: '22px', fontWeight: 'bold', margin: '0 0 12px' }}>
+              Trial Period Expired
+            </h2>
+            <p style={{ color: '#9ca3af', fontSize: '14px', lineHeight: '1.6', margin: '0 0 28px' }}>
+              Your 24-hour free trial has ended.
+              Upgrade your subscription to continue accessing the platform.
+            </p>
+            <button
+              onClick={() => setActiveTab('subscription')}
+              style={{
+                width: '100%', padding: '14px',
+                background: '#FFD700', color: '#000',
+                border: 'none', borderRadius: '8px',
+                fontSize: '15px', fontWeight: 'bold',
+                cursor: 'pointer', letterSpacing: '0.5px',
+              }}>
+              🚀 Upgrade Now
+            </button>
+            <p style={{ color: '#4b5563', fontSize: '12px', marginTop: '16px' }}>
+              Need help? Contact your platform administrator.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Top Navigation Bar ── */}
       <div style={{
         height: 60, flexShrink: 0, borderBottom: '1px solid var(--border)',
@@ -727,8 +771,36 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
+      {companyProfile?.subscription_package === 'Trial_1day' && !trialExpired && (
+        <div style={{
+          background: 'rgba(245,158,11,0.1)',
+          border: '1px solid #f59e0b',
+          borderRadius: '8px',
+          padding: '10px 20px',
+          margin: '12px 24px 0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+        }}>
+          <span style={{ color: '#f59e0b', fontSize: '13px', fontWeight: '600' }}>
+            ⚠️ Trial Mode — Your free trial expires 24 hours from activation. Upgrade to keep full access.
+          </span>
+          <button
+            onClick={() => setActiveTab('subscription')}
+            style={{
+              padding: '6px 16px', background: 'transparent',
+              border: '1px solid #f59e0b', color: '#f59e0b',
+              borderRadius: '6px', fontSize: '12px',
+              fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap',
+            }}>
+            Upgrade
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', height: 'calc(100vh - 60px)' }}>
-        
+
         {/* ── Sidebar CRM Navigation ── */}
         <div style={{
           width: 240, flexShrink: 0, overflowY: 'hidden', borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',

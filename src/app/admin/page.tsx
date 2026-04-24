@@ -266,14 +266,23 @@ export default function SuperAdminDashboard() {
         return m.toLowerCase()
       })
       const { monthly: subPrice } = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any)
-      const { error } = await (supabase.from('profiles') as any).update({
+      const editUpdate: any = {
         full_name: formData.company,
         company_slug: formData.slug,
         subscription_package: formData.subscriptionPackage,
         market_access: formData.market_access,
         allowed_markets: mktKeys,
         subscription_price: subPrice,
-      }).eq('id', editingTenant)
+      }
+      if (formData.subscriptionPackage === 'Trial_1day') {
+        const now = new Date().toISOString()
+        editUpdate.trial_started_at = now
+        editUpdate.expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      } else {
+        editUpdate.trial_started_at = null
+        editUpdate.expires_at = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+      }
+      const { error } = await (supabase.from('profiles') as any).update(editUpdate).eq('id', editingTenant)
 
       if (error) { alert('Update failed: ' + error.message); return }
 
@@ -293,7 +302,8 @@ export default function SuperAdminDashboard() {
           password: formData.adminPassword || 'vaultdefault123!',
           full_name: formData.company,
           company_name: formData.company,
-          slug: formData.slug
+          slug: formData.slug,
+          subscriptionPackage: formData.subscriptionPackage
         })
       })
       const result = await response.json()
@@ -759,9 +769,6 @@ export default function SuperAdminDashboard() {
                     style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', cursor: 'pointer' }}
                   >
                     <option value="Trial_1day" style={{ color: '#000' }}>Trial — 1 Day</option>
-                    <option value="Trial_3days" style={{ color: '#000' }}>Trial — 3 Days</option>
-                    <option value="Trial_7days" style={{ color: '#000' }}>Trial — 7 Days</option>
-                    <option value="trial" style={{ color: '#000' }}>Trial — 14 Days</option>
                     <option value="Standard" style={{ color: '#000' }}>Standard — Monthly</option>
                     <option value="VIP" style={{ color: '#000' }}>VIP — Monthly</option>
                     <option value="annual_standard" style={{ color: '#000' }}>Standard — Annual</option>
