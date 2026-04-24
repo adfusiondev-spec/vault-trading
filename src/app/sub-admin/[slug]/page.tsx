@@ -64,6 +64,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'deposits' | 'withdrawals' | 'subscription' | 'payment-settings'>('monitor')
+  const [showSubscriptionOverride, setShowSubscriptionOverride] = useState(false)
   const [selectedTx, setSelectedTx] = useState<any>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [proofSignedUrl, setProofSignedUrl] = useState<string | null>(null)
@@ -336,6 +337,14 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   const { notifications, unreadCount, markAsRead } = useNotifications(companyProfile?.id || '', 'sub_admin')
 
+  const trialExpired = isTrialExpired(companyProfile ?? {})
+
+  useEffect(() => {
+    if (showSubscriptionOverride && activeTab !== 'subscription') {
+      setShowSubscriptionOverride(false)
+    }
+  }, [activeTab, showSubscriptionOverride])
+
   const handleLogout = async () => {
     localStorage.removeItem('vault_user_email')
     localStorage.removeItem('vault_user_role')
@@ -532,8 +541,6 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
   if (!isAuthorized) return null
 
-  const trialExpired = isTrialExpired(companyProfile ?? {})
-
   const TransactionDetailModal = () => {
     const tx = selectedTx
     if (!detailModalOpen || !tx) return null
@@ -658,7 +665,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     }}>
       <TransactionDetailModal />
 
-      {trialExpired && (
+      {trialExpired && !showSubscriptionOverride && (
         <div style={{
           position: 'fixed', inset: 0,
           background: 'rgba(0,0,0,0.85)',
@@ -684,7 +691,10 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               Upgrade your subscription to continue accessing the platform.
             </p>
             <button
-              onClick={() => setActiveTab('subscription')}
+              onClick={() => {
+                setShowSubscriptionOverride(true)
+                setActiveTab('subscription')
+              }}
               style={{
                 width: '100%', padding: '14px',
                 background: '#FFD700', color: '#000',
