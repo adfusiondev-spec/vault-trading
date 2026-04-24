@@ -24,6 +24,7 @@ function RegisterContent() {
   const searchParams = useSearchParams()
   const companySlug = searchParams.get('company')
   const inviteToken = searchParams.get('invite')
+  const refCode = searchParams.get('ref')
   const [company, setCompany] = useState<{id: string, full_name: string} | null>(null)
 
   useEffect(() => {
@@ -31,6 +32,33 @@ function RegisterContent() {
   }, [])
 
   useEffect(() => {
+    // Referral code flow — resolve sales rep + sub_admin info
+    if (refCode) {
+      const supabase = createClient()
+      supabase
+        .from('profiles')
+        .select('id, assigned_to, full_name')
+        .eq('referral_code', refCode)
+        .eq('role', 'sales')
+        .single()
+        .then(({ data }) => {
+          if (data && (data as any).assigned_to) {
+            // Fetch the sub_admin to show the company name
+            supabase
+              .from('profiles')
+              .select('id, full_name')
+              .eq('id', (data as any).assigned_to)
+              .single()
+              .then(({ data: adminData }) => {
+                if (adminData) setCompany(adminData as any)
+              })
+          } else {
+            setError('Invalid referral link.')
+          }
+        })
+      return
+    }
+
     // Invite token flow — resolve company name from token
     if (inviteToken) {
       const supabase = createClient()
@@ -64,13 +92,50 @@ function RegisterContent() {
         if (data) setCompany(data)
         else router.push('/login')
       })
-  }, [companySlug, inviteToken, router])
+  }, [companySlug, inviteToken, refCode, router])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password || !fullName) return
     setError(null)
     setIsSubmitting(true)
+
+    // Referral code flow — register trader and assign to sales rep + sub_admin
+    if (refCode) {
+      try {
+        const supabase = createClient()
+        // Resolve the sales user from referral code
+        const { data: salesUser } = await supabase
+          .from('profiles')
+          .select('id, assigned_to')
+          .eq('referral_code', refCode)
+          .eq('role', 'sales')
+          .single()
+
+        if (!salesUser) throw new Error('Invalid referral link.')
+
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName } },
+        })
+
+        if (signUpError || !authData.user) throw new Error(signUpError?.message || 'Sign up failed')
+
+        // Assign trader to both sub_admin and sales rep
+        await (supabase.from('profiles') as any).update({
+          assigned_to: (salesUser as any).assigned_to,
+          assigned_sales_id: (salesUser as any).id,
+        }).eq('id', authData.user.id)
+
+        setIsSuccess(true)
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
 
     // Invite token flow — uses secure server-side API
     if (inviteToken) {

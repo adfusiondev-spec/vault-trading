@@ -70,7 +70,8 @@ export default function SuperAdminDashboard() {
     market_access: [] as string[],
     billingCycle: 'Monthly' as 'Monthly' | 'Annual',
     subscriptionPackage: 'trial',
-    expiresAt: ''
+    expiresAt: '',
+    sales_limit: 0
   })
 
   const ASSET_CLASSES = ['Crypto', 'Forex', 'Commodities', 'Global Indices', 'Saudi Indices'] as const
@@ -243,7 +244,8 @@ export default function SuperAdminDashboard() {
       market_access: [],
       billingCycle: 'Monthly',
       subscriptionPackage: 'trial',
-      expiresAt: ''
+      expiresAt: '',
+      sales_limit: 0
     })
     setIsModalOpen(true)
   }
@@ -253,6 +255,15 @@ export default function SuperAdminDashboard() {
   const handleSaveCompany = async () => {
     if (!formData.company || !formData.adminEmail) return alert('Please fill in required fields.')
     const supabase = createClient()
+
+    // Validate sales_limit cannot be decreased when editing
+    if (editingTenant) {
+      const existing = companies.find((c: any) => c.id === editingTenant)
+      if (existing && formData.sales_limit < (existing.sales_limit || 0)) {
+        alert('Sales limit cannot be decreased. Current limit: ' + (existing.sales_limit || 0))
+        return
+      }
+    }
 
     if (editingTenant) {
       // ── UPDATE EXISTING TENANT ──
@@ -273,6 +284,7 @@ export default function SuperAdminDashboard() {
         market_access: formData.market_access,
         allowed_markets: mktKeys,
         subscription_price: subPrice,
+        sales_limit: formData.sales_limit,
       }
       if (formData.subscriptionPackage === 'Trial_1day') {
         const now = new Date().toISOString()
@@ -581,7 +593,8 @@ export default function SuperAdminDashboard() {
                                   market_access: company.market_access || [],
                                   billingCycle: 'Monthly',
                                   subscriptionPackage: company.subscription_package || 'trial',
-                                  expiresAt: ''
+                                  expiresAt: '',
+                                  sales_limit: company.sales_limit || 0
                                 })
                                 setIsModalOpen(true)
                               }} style={{ 
@@ -671,8 +684,8 @@ export default function SuperAdminDashboard() {
 
       {/* ── Modal for Manage / Add Company ── */}
       {isModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}>
-          <div className="fade-in" style={{ background: '#0a0c10', border: '1px solid #FFD700', borderRadius: 12, width: 500, maxWidth: '90%', padding: 24, boxShadow: '0 10px 40px rgba(255,215,0,0.1)' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', overflowY: 'auto', padding: '20px' }}>
+          <div className="fade-in" style={{ background: '#0a0c10', border: '1px solid #FFD700', borderRadius: 12, width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', padding: 24, boxShadow: '0 10px 40px rgba(255,215,0,0.1)', margin: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontSize: 18, color: '#FFD700', fontWeight: 700, margin: 0 }}>{editingTenant ? 'MANAGE TENANT' : 'ADD NEW COMPANY'}</h3>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: '#c0c3ce', cursor: 'pointer' }}><X size={20} /></button>
@@ -802,6 +815,24 @@ export default function SuperAdminDashboard() {
                   </div>
                 )
               })()}
+
+              <div style={{ marginTop: 12 }}>
+                <label style={{ color: '#9ca3af', fontSize: 13, display: 'block', marginBottom: 6 }}>
+                  SALES USERS LIMIT
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={formData.sales_limit}
+                  onChange={e => setFormData({ ...formData, sales_limit: parseInt(e.target.value) || 0 })}
+                  style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', color: '#fff', borderRadius: 6, padding: '10px 14px', fontSize: 14, outline: 'none' }}
+                  placeholder="0 = no sales users allowed"
+                />
+                <p style={{ color: '#4b5563', fontSize: 11, margin: '4px 0 0' }}>
+                  Number of Sales accounts this tenant can create. Cannot be decreased once set.
+                </p>
+              </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 30, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.1)' }}>

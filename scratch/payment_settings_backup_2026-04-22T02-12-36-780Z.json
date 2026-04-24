@@ -1,0 +1,49 @@
+{
+  "table": "public.payment_settings",
+  "exported_at": "2026-04-22T02:12:36.781Z",
+  "row_count": 2,
+  "schema": {
+    "id": "uuid (PK)",
+    "sub_admin_id": "uuid (FK → profiles.id, UNIQUE, nullable)",
+    "usdt_address": "text",
+    "usdt_network": "text (default: TRC20)",
+    "usdt_is_active": "boolean (default: true)",
+    "btc_address": "text",
+    "btc_is_active": "boolean (default: true)",
+    "bank_name": "text",
+    "bank_account_holder": "text",
+    "bank_rib": "text",
+    "bank_is_active": "boolean (default: true)",
+    "updated_at": "timestamptz (default: now())"
+  },
+  "rows": [
+    {
+      "id": "b4fb1664-d2ee-4abe-8c7f-d9426c6732be",
+      "sub_admin_id": "434849ef-f15e-47ed-830f-1dc84f88b6d2",
+      "usdt_address": "TWsx4eKyrXdaxK7uCVj6PqmWnfbpjCiTFA",
+      "usdt_network": "TRC20",
+      "usdt_is_active": true,
+      "btc_address": "0xf72887441b870971fd85f95215254c053cce4931",
+      "btc_is_active": true,
+      "bank_name": "BMCE BAK",
+      "bank_account_holder": "FULL NAME",
+      "bank_rib": "007 000 0000000000 00",
+      "bank_is_active": true,
+      "updated_at": "2026-04-21T23:56:06.716686+00:00"
+    },
+    {
+      "id": "70e3b36b-c9a4-4d9e-a445-b84eb0795d5d",
+      "sub_admin_id": "7d9c5b79-e17a-430f-bfe3-5f4d39782fd8",
+      "usdt_address": "TRX7xK9mNpQwE3rBvYsD2uF9hGjL4cP6nA",
+      "usdt_network": "TRC20",
+      "usdt_is_active": true,
+      "btc_address": "",
+      "btc_is_active": true,
+      "bank_name": "",
+      "bank_account_holder": "",
+      "bank_rib": "",
+      "bank_is_active": true,
+      "updated_at": "2026-04-13T05:11:38.426108+00:00"
+    }
+  ]
+}

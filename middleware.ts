@@ -1,92 +1,126 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  const { pathname } = request.nextUrl;
 
-  // Create a server client for the middleware, using the request cookies
+  // STEP 1 — Public paths: never touch these
+  const isPublic =
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/favicon') ||
+    /\.(.*)$/.test(pathname);
+
+  if (isPublic) return NextResponse.next();
+
+  // STEP 2 — Build Supabase client with proper cookie forwarding
+  let supabaseResponse = NextResponse.next({ request });
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Update the request cookies
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          
-          // Update the response cookies
-          supabaseResponse = NextResponse.next({
-            request,
-          })
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
-          )
+          );
         },
       },
     }
-  )
+  );
 
-  // This will refresh session if expired - required for Server Components
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // STEP 3 — Get user (never use getSession — always getUser)
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname
-
-  // حماية المسارات — إعادة توجيه غير المسجلين
-  const protectedRoutes = ['/admin', '/sub-admin', '/user']
-  const isProtected = protectedRoutes.some(r => path.startsWith(r))
-  
-  if (isProtected && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  if (userError || !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
-  // منع الوصول للمسارات الخاطئة حسب الدور
-  if (user && isProtected) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role, is_banned')
-      .eq('id', user.id)
-      .single()
+  // STEP 4 — Get profile (minimal fields only)
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role, is_banned, company_slug')
+    .eq('id', user.id)
+    .single();
 
-    if (profile?.is_banned === true) {
-      return NextResponse.redirect(new URL('/login?reason=banned', request.url))
+  if (profileError || !profile) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  if (profile.is_banned) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  const { role, company_slug } = profile;
+
+  // STEP 5 — Role routing
+  // SUPER ADMIN: must be on /admin
+  if (role === 'super_admin') {
+    if (!pathname.startsWith('/admin')) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin';
+      return NextResponse.redirect(url);
     }
+    return supabaseResponse;
+  }
 
-    const role = profile?.role
-    const wrongRoute =
-      (path.startsWith('/admin') && role !== 'super_admin') ||
-      (path.startsWith('/sub-admin') && role !== 'sub_admin') ||
-      (path.startsWith('/user') && role !== 'trader')
-
-    if (wrongRoute) {
-      // توجيه للمسار الصحيح
-      if (role === 'super_admin') return NextResponse.redirect(new URL('/admin', request.url))
-      if (role === 'sub_admin') return NextResponse.redirect(new URL('/sub-admin', request.url))
-      if (role === 'trader') return NextResponse.redirect(new URL('/user', request.url))
+  // SUB ADMIN: must be on /sub-admin (but NOT /sub-admin/*/sales)
+  if (role === 'sub_admin') {
+    if (!pathname.startsWith('/sub-admin')) {
+      const url = request.nextUrl.clone();
+      url.pathname = company_slug
+        ? `/sub-admin/${company_slug}`
+        : '/login';
+      return NextResponse.redirect(url);
     }
+    return supabaseResponse;
   }
 
-  // منع الوصول لـ /login و /register إذا كان مسجلاً
-  if (user && (path === '/login')) {
-    const { data: profile } = await supabase
-      .from('profiles').select('role, is_banned').eq('id', user.id).single()
-    
-    if (profile?.role === 'super_admin') return NextResponse.redirect(new URL('/admin', request.url))
-    if (profile?.role === 'sub_admin') return NextResponse.redirect(new URL('/sub-admin', request.url))
-    return NextResponse.redirect(new URL('/user', request.url))
+  // SALES: must be on /sub-admin/[slug]/sales/*
+  if (role === 'sales') {
+    const onSalesPath = /^\/sub-admin\/[^/]+\/sales(\/|$)/.test(pathname);
+    if (!onSalesPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = company_slug
+        ? `/sub-admin/${company_slug}/sales`
+        : '/login';
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
   }
 
-  return supabaseResponse
+  // TRADER: must be on /user
+  if (role === 'trader') {
+    if (!pathname.startsWith('/user')) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/user';
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
+  }
+
+  // Unknown role — let through
+  return supabaseResponse;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/sub-admin/:path*', '/user/:path*', '/login'],
-}
+  matcher: [
+    '/((?!_next/static|_next/image|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};

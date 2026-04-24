@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Activity, DollarSign, LogOut, ShieldCheck, Check, X, Bell, Eye, Settings, CreditCard, ArrowDownCircle, ArrowUpCircle } from 'lucide-react'
+import { Users, Activity, DollarSign, LogOut, ShieldCheck, Check, X, Bell, Eye, Settings, CreditCard, ArrowDownCircle, ArrowUpCircle, UserCheck, Target, Copy } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingTransactions } from '@/hooks/usePendingTransactions'
 import { useMarketData } from '@/hooks/useMarketData'
@@ -55,6 +55,601 @@ function CopyAddressButton({ address }: { address: string }) {
   )
 }
 
+// ── SalesTeamPanel Component ──────────────────────────────────────────────────
+function SalesTeamPanel({ subAdminId, companySlug }: { subAdminId: string; companySlug: string }) {
+  const supabase = createClient()
+  const [salesUsers, setSalesUsers] = useState<any[]>([])
+  const [salesLimit, setSalesLimit] = useState(0)
+  const [traderCounts, setTraderCounts] = useState<Record<string, number>>({})
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [addForm, setAddForm] = useState({ full_name: '', email: '', password: '', phone_number: '', country: '' })
+  const [addLoading, setAddLoading] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const loadSalesData = useCallback(async () => {
+    if (!subAdminId) return
+
+    const { data: profile } = await (supabase.from('profiles') as any)
+      .select('sales_limit').eq('id', subAdminId).single()
+    setSalesLimit(profile?.sales_limit || 0)
+
+    const { data: users } = await (supabase.from('profiles') as any)
+      .select('id, full_name, email, referral_code, phone_number, country, created_at')
+      .eq('assigned_to', subAdminId)
+      .eq('role', 'sales')
+    setSalesUsers(users || [])
+
+    if (users && users.length > 0) {
+      const counts: Record<string, number> = {}
+      await Promise.all(users.map(async (u: any) => {
+        const { count } = await supabase.from('profiles')
+          .select('id', { count: 'exact' })
+          .eq('assigned_sales_id', u.id)
+          .eq('role', 'trader')
+        counts[u.id] = count || 0
+      }))
+      setTraderCounts(counts)
+    }
+  }, [subAdminId])
+
+  useEffect(() => { loadSalesData() }, [loadSalesData])
+
+  const handleAddSales = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAddLoading(true)
+    try {
+      const res = await fetch('/api/create-sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addForm),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to create sales user')
+      alert('Sales user created successfully!')
+      setIsAddModalOpen(false)
+      setAddForm({ full_name: '', email: '', password: '', phone_number: '', country: '' })
+      loadSalesData()
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
+  const copyReferralLink = (code: string, id: string) => {
+    const link = `${window.location.origin}/register?ref=${code}`
+    navigator.clipboard.writeText(link).catch(() => {
+      const el = document.createElement('textarea')
+      el.value = link
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    })
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const thS: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', color: '#6b7280', fontWeight: 600, fontSize: 11, letterSpacing: '0.5px', borderBottom: '1px solid #1a1a1a' }
+  const tdS: React.CSSProperties = { padding: '12px 14px', fontSize: 13, borderBottom: '1px solid #111' }
+
+  if (salesLimit === 0) {
+    return (
+      <div style={{ padding: 32, textAlign: 'center', color: '#6b7280', border: '1px dashed #333', borderRadius: 10 }}>
+        <UserCheck size={32} style={{ marginBottom: 12, opacity: 0.4 }} />
+        <p style={{ fontSize: 14, lineHeight: 1.7 }}>
+          Your plan does not include Sales users.<br />
+          Contact your administrator to upgrade.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {/* Add Sales Modal */}
+      {isAddModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsAddModalOpen(false)}>
+          <div style={{ background: '#0f0f0f', border: '1px solid #FFD700', borderRadius: 14, padding: 32, width: 420, maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, margin: '0 0 20px' }}>ADD SALES USER</h3>
+            <form onSubmit={handleAddSales} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { key: 'full_name', label: 'Full Name *', type: 'text', required: true },
+                { key: 'email', label: 'Email *', type: 'email', required: true },
+                { key: 'password', label: 'Password *', type: 'password', required: true },
+                { key: 'phone_number', label: 'Phone', type: 'text', required: false },
+                { key: 'country', label: 'Country', type: 'text', required: false },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>{f.label.toUpperCase()}</label>
+                  <input
+                    type={f.type}
+                    required={f.required}
+                    value={(addForm as any)[f.key]}
+                    onChange={e => setAddForm({ ...addForm, [f.key]: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', fontSize: 14 }}
+                  />
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button type="button" onClick={() => setIsAddModalOpen(false)} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #333', color: '#9ca3af', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                <button type="submit" disabled={addLoading} style={{ flex: 1, padding: '11px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, cursor: addLoading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14 }}>
+                  {addLoading ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ color: '#FFD700', fontSize: 18, fontWeight: 700, letterSpacing: '0.05em', margin: 0 }}>SALES TEAM</h2>
+          <p style={{ color: '#6b7280', fontSize: 13, margin: '4px 0 0' }}>
+            Sales Used: <span style={{ color: '#FFD700', fontWeight: 700 }}>{salesUsers.length}</span> / {salesLimit}
+          </p>
+        </div>
+        {salesUsers.length < salesLimit && (
+          <button onClick={() => setIsAddModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+            + Add Sales User
+          </button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+          <thead>
+            <tr>
+              {['NAME', 'EMAIL', 'REFERRAL LINK', 'ASSIGNED TRADERS', 'JOINED'].map(h => (
+                <th key={h} style={thS}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {salesUsers.length === 0 ? (
+              <tr><td colSpan={5} style={{ ...tdS, textAlign: 'center', color: '#4b5563' }}>No sales users yet. Click "Add Sales User" to get started.</td></tr>
+            ) : salesUsers.map((u: any) => (
+              <tr key={u.id} style={{ borderBottom: '1px solid #111' }}>
+                <td style={{ ...tdS, color: '#fff', fontWeight: 600 }}>{u.full_name || '—'}</td>
+                <td style={{ ...tdS, color: '#9ca3af' }}>{u.email || '—'}</td>
+                <td style={{ ...tdS }}>
+                  {u.referral_code ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: '#6b7280', fontSize: 12, fontFamily: 'monospace', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        /register?ref={u.referral_code}
+                      </span>
+                      <button onClick={() => copyReferralLink(u.referral_code, u.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: copiedId === u.id ? 'rgba(34,197,94,0.15)' : 'transparent', border: `1px solid ${copiedId === u.id ? '#22c55e' : '#374151'}`, color: copiedId === u.id ? '#22c55e' : '#9ca3af', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <Copy size={12} /> {copiedId === u.id ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  ) : '—'}
+                </td>
+                <td style={{ ...tdS, color: '#FFD700', fontWeight: 700, textAlign: 'center' }}>{traderCounts[u.id] ?? 0}</td>
+                <td style={{ ...tdS, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── LeadsPanel Component ───────────────────────────────────────────────────────
+const LEAD_STATUSES = ['New Prospect', 'Hot Lead', 'Active', 'Cold', 'Prospect', 'Inactive', 'Contacted', 'In Negotiation', 'Active / Funded'] as const
+type LeadStatus = typeof LEAD_STATUSES[number]
+
+const STATUS_STYLE: Record<LeadStatus, { border: string; bg: string }> = {
+  'New Prospect':   { border: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
+  'Hot Lead':       { border: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+  'Active':         { border: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
+  'Cold':           { border: '#6b7280', bg: 'rgba(107,114,128,0.15)' },
+  'Prospect':       { border: '#a855f7', bg: 'rgba(168,85,247,0.15)' },
+  'Inactive':       { border: '#4b5563', bg: 'rgba(75,85,99,0.15)' },
+  'Contacted':      { border: '#eab308', bg: 'rgba(234,179,8,0.15)' },
+  'In Negotiation': { border: '#f97316', bg: 'rgba(249,115,22,0.15)' },
+  'Active / Funded':{ border: '#FFD700', bg: 'rgba(255,215,0,0.15)' },
+}
+
+function LeadsPanel({ subAdminId }: { subAdminId: string }) {
+  const [leads, setLeads] = useState<any[]>([])
+  const [salesUsers, setSalesUsers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState('')
+  const [salesFilter, setSalesFilter] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Add Lead modal
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [addForm, setAddForm] = useState({ full_name: '', email: '', phone: '', country: '', status: 'New Prospect', notes: '', assigned_sales_id: '' })
+  const [addLoading, setAddLoading] = useState(false)
+
+  // Import modal
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importAssignedSales, setImportAssignedSales] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<string | null>(null)
+
+  // Toast
+  const [toast, setToast] = useState<string | null>(null)
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000) }
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [leadsRes, salesRes] = await Promise.all([
+        fetch('/api/leads'),
+        fetch('/api/leads'), // sales users come from profiles query below
+      ])
+      const leadsJson = await leadsRes.json()
+      setLeads(leadsJson.leads || [])
+
+      // Fetch sales users for this sub_admin
+      const supabase = createClient()
+      const { data: users } = await (supabase.from('profiles') as any)
+        .select('id, full_name, email')
+        .eq('assigned_to', subAdminId)
+        .eq('role', 'sales')
+      setSalesUsers(users || [])
+    } catch (err) {
+      console.error('LeadsPanel load error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [subAdminId])
+
+  useEffect(() => { loadData() }, [loadData])
+
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    if (newStatus === 'Active / Funded') {
+      if (!window.confirm('Mark this lead as Active / Funded? This action cannot be undone.')) return
+    }
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l))
+    await fetch('/api/leads', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead_id: leadId, status: newStatus }),
+    })
+  }
+
+  const handleAddLead = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAddLoading(true)
+    try {
+      const res = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: addForm.full_name,
+          email: addForm.email || null,
+          phone_number: addForm.phone || null,
+          country: addForm.country || null,
+          status: addForm.status,
+          notes: addForm.notes || null,
+          assigned_sales_id: addForm.assigned_sales_id || null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed')
+      setAddModalOpen(false)
+      setAddForm({ full_name: '', email: '', phone: '', country: '', status: 'New Prospect', notes: '', assigned_sales_id: '' })
+      showToast('Lead added successfully.')
+      loadData()
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setAddLoading(false)
+    }
+  }
+
+  const handleImportLeads = async () => {
+    if (!importFile) return
+    setImporting(true)
+    setImportResult(null)
+    try {
+      let raw: any[] = []
+      const fileName = importFile.name.toLowerCase()
+
+      if (fileName.endsWith('.csv')) {
+        const text = await importFile.text()
+        const lines = text.split(/\r?\n/).filter(l => l.trim())
+        if (lines.length < 2) {
+          setImportResult('❌ File is empty or has no data rows.')
+          setImporting(false)
+          return
+        }
+        const delimiter = lines[0].includes(';') ? ';' : ','
+        const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''))
+        raw = lines.slice(1).map(line => {
+          const values = line.split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''))
+          const obj: any = {}
+          headers.forEach((h, i) => { obj[h] = values[i] || '' })
+          return obj
+        })
+      } else if (
+        fileName.endsWith('.xlsx') || fileName.endsWith('.xls') ||
+        fileName.endsWith('.xlsm') || fileName.endsWith('.ods')
+      ) {
+        try {
+          const XLSX = await import('xlsx')
+          const buffer = await importFile.arrayBuffer()
+          const wb = XLSX.read(buffer, { type: 'array' })
+          const ws = wb.Sheets[wb.SheetNames[0]]
+          raw = XLSX.utils.sheet_to_json(ws, { defval: '' }) as any[]
+        } catch {
+          setImportResult('❌ Failed to parse Excel file. Try saving as CSV first.')
+          setImporting(false)
+          return
+        }
+      } else {
+        setImportResult('❌ Unsupported format. Use: .xlsx, .xls, .csv')
+        setImporting(false)
+        return
+      }
+
+      if (raw.length === 0) {
+        setImportResult('❌ No valid leads found. Check column headers: Full Name, Email, Phone, Country')
+        setImporting(false)
+        return
+      }
+
+      const normalized = raw.map(l => ({
+        full_name: l['Full Name'] || l['full_name'] || l['NAME'] || l['name'] || l['Nom Complet'] || '',
+        email: l['Email'] || l['email'] || l['E-mail'] || l['EMAIL'] || '',
+        phone_number: l['Phone'] || l['phone'] || l['phone_number'] || l['Phone Number'] || l['Téléphone'] || l['PHONE'] || '',
+        country: l['Country'] || l['country'] || l['Pays'] || l['COUNTRY'] || '',
+      })).filter(l => l.full_name.trim() !== '')
+
+      if (normalized.length === 0) {
+        setImportResult('❌ No valid leads found. Check column headers: Full Name, Email, Phone, Country')
+        setImporting(false)
+        return
+      }
+
+      const res = await fetch('/api/leads/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leads: normalized, assigned_sales_id: importAssignedSales || null }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Import failed')
+      setImportResult(`✅ Successfully imported ${json.imported ?? json.count ?? normalized.length} leads!`)
+      setImportFile(null)
+      loadData()
+      setTimeout(() => {
+        setImportModalOpen(false)
+        setImportResult(null)
+        setImportAssignedSales('')
+      }, 2500)
+    } catch (err: any) {
+      setImportResult('❌ Unexpected error: ' + err.message)
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const salesUserMap = Object.fromEntries(salesUsers.map(u => [u.id, u.full_name || u.email]))
+
+  const filteredLeads = leads.filter(l => {
+    if (statusFilter && l.status !== statusFilter) return false
+    if (salesFilter && l.assigned_sales_id !== salesFilter) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      if (!l.full_name?.toLowerCase().includes(q) && !l.email?.toLowerCase().includes(q)) return false
+    }
+    return true
+  })
+
+  const thS: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', color: '#6b7280', fontWeight: 600, fontSize: 11, letterSpacing: '0.5px', borderBottom: '1px solid #1a1a1a', whiteSpace: 'nowrap' }
+  const tdS: React.CSSProperties = { padding: '11px 14px', fontSize: 13, borderBottom: '1px solid #111', verticalAlign: 'middle' }
+  const inputStyle: React.CSSProperties = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', fontSize: 13, width: '100%' }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#22c55e', color: '#000', padding: '12px 20px', borderRadius: 8, fontWeight: 700, fontSize: 13, zIndex: 99999, boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Add Lead Modal */}
+      {addModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '20px' }} onClick={() => setAddModalOpen(false)}>
+          <div style={{ background: '#0f0f0f', border: '1px solid #FFD700', borderRadius: 14, padding: 32, width: 440, maxWidth: '92%', margin: 'auto' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, margin: '0 0 20px' }}>ADD LEAD</h3>
+            <form onSubmit={handleAddLead} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { key: 'full_name', label: 'Full Name *', type: 'text', required: true },
+                { key: 'email', label: 'Email', type: 'email', required: false },
+                { key: 'phone', label: 'Phone', type: 'text', required: false },
+                { key: 'country', label: 'Country', type: 'text', required: false },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>{f.label.toUpperCase()}</label>
+                  <input type={f.type} required={f.required} value={(addForm as any)[f.key]}
+                    onChange={e => setAddForm({ ...addForm, [f.key]: e.target.value })} style={inputStyle} />
+                </div>
+              ))}
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>STATUS</label>
+                <select value={addForm.status} onChange={e => setAddForm({ ...addForm, status: e.target.value })}
+                  style={{ ...inputStyle, background: '#0f0f0f' }}>
+                  {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>ASSIGN TO SALES REP</label>
+                <select value={addForm.assigned_sales_id} onChange={e => setAddForm({ ...addForm, assigned_sales_id: e.target.value })}
+                  style={{ ...inputStyle, background: '#0f0f0f', color: addForm.assigned_sales_id ? '#fff' : '#6b7280' }}>
+                  <option value="">— Unassigned —</option>
+                  {salesUsers.map((u: any) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>NOTES</label>
+                <textarea value={addForm.notes} onChange={e => setAddForm({ ...addForm, notes: e.target.value })} rows={3}
+                  style={{ ...inputStyle, resize: 'vertical' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                <button type="button" onClick={() => setAddModalOpen(false)} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #333', color: '#9ca3af', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                <button type="submit" disabled={addLoading} style={{ flex: 1, padding: '11px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, cursor: addLoading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14 }}>
+                  {addLoading ? 'Adding...' : 'Add Lead'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Import Leads Modal */}
+      {importModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setImportModalOpen(false); setImportResult(null); setImportFile(null); }}>
+          <div style={{ background: '#0f0f0f', border: '1px solid #FFD700', borderRadius: 14, padding: 32, width: 440, maxWidth: '92%' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>IMPORT LEADS</h3>
+            <div style={{ background: '#111', border: '1px solid #222', borderRadius: 8, padding: '10px 14px', margin: '0 0 20px' }}>
+              <p style={{ color: '#9ca3af', fontSize: 12, margin: 0, lineHeight: 1.8 }}>
+                Supported formats: <span style={{ color: '#FFD700' }}>.xlsx, .xls, .csv, .ods</span><br/>
+                Required column: <span style={{ color: '#FFD700' }}>Full Name</span><br/>
+                Optional columns: <span style={{ color: '#9ca3af' }}>Email, Phone, Country</span><br/>
+                <span style={{ color: '#4b5563', fontSize: 11 }}>First row must be headers. Comma or semicolon delimiters accepted.</span>
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 8 }}>FILE (.CSV / .XLSX / .XLS / .ODS)</label>
+                <input type="file" accept=".csv,.xlsx,.xls,.xlsm,.ods" onChange={e => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }} style={{ ...inputStyle, cursor: 'pointer' }} />
+              </div>
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 8 }}>ASSIGN TO SALES REP (OPTIONAL)</label>
+                <select value={importAssignedSales} onChange={e => setImportAssignedSales(e.target.value)}
+                  style={{ ...inputStyle, background: '#0f0f0f', color: importAssignedSales ? '#fff' : '#6b7280' }}>
+                  <option value="">— Unassigned —</option>
+                  {salesUsers.map((u: any) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+                </select>
+              </div>
+              {importResult && (
+                <div style={{ padding: '10px 14px', borderRadius: 6, background: importResult.startsWith('✅') ? 'rgba(34,197,94,0.1)' : 'rgba(239,83,80,0.1)', border: `1px solid ${importResult.startsWith('✅') ? '#22c55e' : '#ef5350'}`, color: importResult.startsWith('✅') ? '#22c55e' : '#ef5350', fontSize: 13 }}>
+                  {importResult}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => { setImportModalOpen(false); setImportResult(null); setImportFile(null); }} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #333', color: '#9ca3af', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                <button onClick={handleImportLeads} disabled={importing || !importFile} style={{ flex: 1, padding: '11px', background: importing || !importFile ? 'rgba(255,215,0,0.4)' : '#FFD700', border: 'none', color: '#000', borderRadius: 8, cursor: importing || !importFile ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14 }}>
+                  {importing ? 'Importing...' : 'Import'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ color: '#FFD700', fontSize: 18, fontWeight: 700, letterSpacing: '0.05em', margin: 0 }}>LEADS</h2>
+          <p style={{ color: '#6b7280', fontSize: 13, margin: '4px 0 0' }}>
+            {filteredLeads.length} of {leads.length} leads
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => { setImportModalOpen(true); setImportResult(null); }} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', background: 'transparent', border: '1px solid #FFD700', color: '#FFD700', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+            ↑ Import Leads
+          </button>
+          <button onClick={() => setAddModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+            + Add Lead
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)', color: statusFilter ? '#fff' : '#6b7280', padding: '8px 14px', borderRadius: 6, outline: 'none', fontSize: 13, minWidth: 160 }}>
+          <option value="">All Statuses</option>
+          {LEAD_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select value={salesFilter} onChange={e => setSalesFilter(e.target.value)}
+          style={{ background: '#0f0f0f', border: '1px solid rgba(255,255,255,0.1)', color: salesFilter ? '#fff' : '#6b7280', padding: '8px 14px', borderRadius: 6, outline: 'none', fontSize: 13, minWidth: 160 }}>
+          <option value="">All Sales Reps</option>
+          {salesUsers.map((u: any) => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+        </select>
+        <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          placeholder="Search name or email..." style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 14px', borderRadius: 6, outline: 'none', fontSize: 13, minWidth: 200, flex: 1 }} />
+      </div>
+
+      {/* Table */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+          <thead>
+            <tr>
+              {['NAME', 'EMAIL', 'PHONE', 'COUNTRY', 'ASSIGNED TO', 'STATUS', 'UPDATED'].map(h => (
+                <th key={h} style={{ ...thS, ...(h === 'PHONE' ? { minWidth: '140px' } : {}) }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={7} style={{ ...tdS, textAlign: 'center', color: '#6b7280' }}>Loading...</td></tr>
+            ) : filteredLeads.length === 0 ? (
+              <tr><td colSpan={7} style={{ ...tdS, textAlign: 'center', color: '#4b5563' }}>No leads found. Click "+ Add Lead" or import a file to get started.</td></tr>
+            ) : filteredLeads.map((lead: any) => {
+              const s = STATUS_STYLE[lead.status as LeadStatus] ?? STATUS_STYLE['New Prospect']
+              return (
+                <tr key={lead.id} style={{ borderBottom: '1px solid #111' }}>
+                  <td style={{ ...tdS, color: '#fff', fontWeight: 600 }}>{lead.full_name || '—'}</td>
+                  <td style={{ ...tdS, color: '#9ca3af' }}>{lead.email || '—'}</td>
+                  <td style={{ padding: '12px 14px', color: '#9ca3af', whiteSpace: 'nowrap', fontSize: 12, letterSpacing: '0.3px', borderBottom: '1px solid #111', verticalAlign: 'middle' }}>
+                    {lead.phone_number || '—'}
+                  </td>
+                  <td style={{ ...tdS, color: '#9ca3af' }}>{lead.country || '—'}</td>
+                  <td style={{ ...tdS, minWidth: 140 }}>
+                    <select
+                      value={lead.assigned_sales_id || ''}
+                      onChange={async (e) => {
+                        const newSalesId = e.target.value || null
+                        const res = await fetch('/api/leads', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ lead_id: lead.id, assigned_sales_id: newSalesId }),
+                        })
+                        if (res.ok) {
+                          setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, assigned_sales_id: newSalesId } : l))
+                        }
+                      }}
+                      style={{ background: lead.assigned_sales_id ? '#1a1a1a' : '#111', border: `1px solid ${lead.assigned_sales_id ? '#374151' : '#4b5563'}`, color: lead.assigned_sales_id ? '#fff' : '#6b7280', borderRadius: 6, padding: '4px 8px', fontSize: 12, cursor: 'pointer', outline: 'none', width: '100%', maxWidth: 160 }}
+                    >
+                      <option value="">Unassigned</option>
+                      {salesUsers.map((u: any) => (
+                        <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td style={{ ...tdS }}>
+                    <select value={lead.status || 'New Prospect'}
+                      onChange={e => handleStatusChange(lead.id, e.target.value)}
+                      style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.border, borderRadius: 20, padding: '3px 8px', fontSize: 11, fontWeight: 700, outline: 'none', cursor: 'pointer' }}>
+                      {LEAD_STATUSES.map(st => <option key={st} value={st} style={{ background: '#1a1a1a', color: '#fff' }}>{st}</option>)}
+                    </select>
+                  </td>
+                  <td style={{ ...tdS, color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>
+                    {lead.updated_at ? new Date(lead.updated_at).toLocaleDateString() : '—'}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 export default function SubAdminDashboard({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter()
   const { t } = useTranslation()
@@ -63,7 +658,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
 
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'deposits' | 'withdrawals' | 'subscription' | 'payment-settings'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'deposits' | 'withdrawals' | 'subscription' | 'payment-settings' | 'sales-team' | 'leads-panel'>('monitor')
   const [showSubscriptionOverride, setShowSubscriptionOverride] = useState(false)
   const [selectedTx, setSelectedTx] = useState<any>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -821,6 +1416,8 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             { id: 'leads', icon: Users, label: t.clients },
             { id: 'deposits', icon: ArrowDownCircle, label: 'Deposits' },
             { id: 'withdrawals', icon: ArrowUpCircle, label: 'Withdrawals' },
+            { id: 'sales-team', icon: UserCheck, label: 'Sales Team' },
+            { id: 'leads-panel', icon: Target, label: 'Leads' },
             { id: 'subscription', icon: CreditCard, label: 'Subscription' },
             { id: 'payment-settings', icon: Settings, label: 'Payment Settings' },
           ].map(item => {
@@ -1064,7 +1661,9 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                             onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent')}
                           >
                             {/* Full Name */}
-                            <td style={{ padding: '13px 14px', color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>{trader.full_name || '—'}</td>
+                            <td style={{ padding: '13px 14px', color: '#fff', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                              {trader.full_name || '—'}
+                            </td>
                             {/* Email */}
                             <td style={{ padding: '13px 14px', color: '#8a8e9b', fontFamily: 'monospace', fontSize: 11 }}>{trader.email}</td>
                             {/* Phone */}
@@ -1077,44 +1676,54 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                             </td>
                             {/* Reg Date */}
                             <td style={{ padding: '13px 14px', color: '#555', fontSize: 11, whiteSpace: 'nowrap' }}>{regDate}</td>
-                            {/* Lead Status */}
-                            <td style={{ padding: '13px 14px' }}>
-                              {(() => {
-                                const status = leadStatuses[trader.id] || 'Active'
-                                const colors: Record<string, { bg: string; color: string; border: string }> = {
-                                  'Active':      { bg: 'rgba(38,166,154,0.1)',  color: '#26a69a', border: 'rgba(38,166,154,0.3)' },
-                                  'Hot Lead':    { bg: 'rgba(255,215,0,0.1)',   color: '#FFD700', border: 'rgba(255,215,0,0.3)' },
-                                  'Cold':        { bg: 'rgba(120,123,134,0.1)', color: '#787b86', border: 'rgba(120,123,134,0.3)' },
-                                  'Prospect':    { bg: 'rgba(100,150,255,0.1)', color: '#6496ff', border: 'rgba(100,150,255,0.3)' },
-                                  'Inactive':    { bg: 'rgba(239,83,80,0.1)',   color: '#ef5350', border: 'rgba(239,83,80,0.3)' },
-                                }
-                                const c = colors[status] || colors['Active']
-                                return (
-                                  <select
-                                    value={status}
-                                    onChange={e => handleLeadStatusChange(trader.id, e.target.value)}
-                                    style={{
-                                      background: c.bg, color: c.color, border: `1px solid ${c.border}`,
-                                      borderRadius: 20, padding: '3px 8px', fontSize: 9, fontWeight: 700,
-                                      letterSpacing: '0.06em', outline: 'none', cursor: 'pointer',
-                                      appearance: 'none', textAlign: 'center'
-                                    }}
-                                  >
-                                    {['Active', 'Hot Lead', 'Cold', 'Prospect', 'Inactive'].map(s => (
-                                      <option key={s} value={s} style={{ background: '#1a1e2e', color: '#fff' }}>{s.toUpperCase()}</option>
-                                    ))}
-                                  </select>
-                                )
-                              })()}
+                            {/* Status */}
+                            <td style={{ padding: '12px 14px' }}>
+                              <span style={{
+                                padding: '3px 10px',
+                                borderRadius: 20,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                background: trader.is_active !== true ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)',
+                                color: trader.is_active !== true ? '#f59e0b' : '#22c55e',
+                                border: `1px solid ${trader.is_active !== true ? '#f59e0b' : '#22c55e'}`,
+                              }}>
+                                {trader.is_active !== true ? 'Inactive' : 'Active'}
+                              </span>
                             </td>
                             {/* Actions */}
                             <td style={{ padding: '13px 14px' }}>
-                              <button
-                                onClick={() => router.push(`/sub-admin/${slug}/client/${trader.id}`)}
-                                style={{ padding: '5px 14px', background: 'transparent', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, color: '#FFD700', fontSize: 10, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.15s', whiteSpace: 'nowrap' }}
-                              >
-                                MANAGE →
-                              </button>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                {trader.is_active !== true && (
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Activate ${trader.full_name}?`)) return
+                                      const supabase = createClient()
+                                      const { error } = await supabase
+                                        .from('profiles')
+                                        .update({ is_active: true, lead_status: 'Active' })
+                                        .eq('id', trader.id)
+                                      if (!error) {
+                                        setTraders(prev => prev.map(c => c.id === trader.id ? { ...c, is_active: true, lead_status: 'Active' } : c))
+                                        setLeadStatuses(prev => ({ ...prev, [trader.id]: 'Active' }))
+                                      } else {
+                                        alert('Failed to activate. Try again.')
+                                      }
+                                    }}
+                                    style={{ padding: '5px 12px', background: 'transparent', border: '1px solid #22c55e', color: '#22c55e', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', marginRight: 6 }}
+                                  >
+                                    ✓ Activate
+                                  </button>
+                                )}
+                                {trader.is_active !== false && (
+                                  <button
+                                    onClick={() => router.push(`/sub-admin/${slug}/client/${trader.id}`)}
+                                    style={{ padding: '5px 14px', background: 'transparent', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, color: '#FFD700', fontSize: 10, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', transition: 'all 0.15s', whiteSpace: 'nowrap' }}
+                                  >
+                                    MANAGE →
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )
@@ -1297,6 +1906,18 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             {activeTab === 'payment-settings' && (
               <div className="crm-section fade-in" style={{ padding: 24 }}>
                 <SubAdminPaymentSettingsPanel />
+              </div>
+            )}
+
+            {activeTab === 'sales-team' && (
+              <div className="crm-section fade-in" style={{ padding: 24 }}>
+                <SalesTeamPanel subAdminId={companyProfile?.id || ''} companySlug={slug} />
+              </div>
+            )}
+
+            {activeTab === 'leads-panel' && (
+              <div className="crm-section fade-in" style={{ padding: 24 }}>
+                <LeadsPanel subAdminId={companyProfile?.id || ''} />
               </div>
             )}
 
