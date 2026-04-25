@@ -141,6 +141,40 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
     if (salesUser) loadTab(activeTab)
   }, [salesUser, activeTab, loadTab])
 
+  // Realtime subscription — keep Trade Monitor live
+  useEffect(() => {
+    if (!salesUser) return
+    const supabase = createClient()
+
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    const subscribe = async () => {
+      const { data: assignedTraders } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('assigned_sales_id', salesUser.id)
+        .eq('role', 'trader')
+
+      const traderIds = (assignedTraders || []).map((t: any) => t.id)
+      if (traderIds.length === 0) return
+
+      channel = supabase
+        .channel('sales-trades-sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'trades' },
+          () => { loadTab('monitor') }
+        )
+        .subscribe()
+    }
+
+    subscribe()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [salesUser, loadTab])
+
   const handleStatusChange = async (leadId: string, newStatus: string, selectEl: HTMLSelectElement) => {
     if (newStatus === 'Active / Funded') {
       if (!confirm('Mark this lead as Active / Funded?')) return
