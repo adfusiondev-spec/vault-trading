@@ -32,6 +32,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ slug: 
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
+  const [viewerRole, setViewerRole] = useState<string>('')
   
   // State
   const [balance, setBalance] = useState(0)
@@ -196,6 +197,7 @@ const [savingProfile, setSavingProfile] = useState(false)
           else router.push('/login')
           return
         }
+        setViewerRole(profile.role)
         setIsAuthorized(true)
       } catch (e) {
         console.error('Auth error:', e)
@@ -680,8 +682,8 @@ const [savingProfile, setSavingProfile] = useState(false)
             </div>
           </div>
 
-          {/* BALANCE ADJUSTMENT */}
-          <div style={{ padding: 24, borderBottom: '1px solid var(--border)' }}>
+          {/* BALANCE ADJUSTMENT — hidden for sales role */}
+          {viewerRole !== 'sales' && <div style={{ padding: 24, borderBottom: '1px solid var(--border)' }}>
             <h3 style={{ fontSize: 11, fontWeight: 700, color: '#FFD700', letterSpacing: '0.08em', marginBottom: 16 }}>BALANCE ADJUSTMENT</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -736,7 +738,7 @@ const [savingProfile, setSavingProfile] = useState(false)
                 {adjLoading ? 'PROCESSING…' : `APPLY ${adjType.toUpperCase()}`}
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* SECURITY & ACCESS */}
           <div style={{ padding: 24, borderBottom: '1px solid var(--border)' }}>
