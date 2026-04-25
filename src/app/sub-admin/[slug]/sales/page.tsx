@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Activity, Users, Target, LogOut, ShieldCheck } from 'lucide-react'
+import { Activity, Users, Target, LogOut, ShieldCheck, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const LEAD_STATUSES = [
@@ -39,7 +39,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [salesUser, setSalesUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'monitor' | 'clients' | 'leads'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'clients' | 'leads' | 'profile'>('monitor')
 
   const [trades, setTrades] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
@@ -50,6 +50,13 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
   const [convertLead, setConvertLead] = useState<any>(null)
   const [convertPassword, setConvertPassword] = useState('')
   const [converting, setConverting] = useState(false)
+
+  // Profile tab state
+  const [profileForm, setProfileForm] = useState({ full_name: '', phone_number: '', country: '' })
+  const [passwordForm, setPasswordForm] = useState({ new_password: '', confirm_password: '' })
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSuccess, setProfileSuccess] = useState('')
+  const [profileError, setProfileError] = useState('')
 
   // Auth check
   useEffect(() => {
@@ -72,6 +79,11 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
       }
 
       setSalesUser({ ...(profile as any), email: session.user.email })
+      setProfileForm({
+        full_name: (profile as any).full_name || '',
+        phone_number: (profile as any).phone_number || '',
+        country: (profile as any).country || '',
+      })
       setLoading(false)
     }
     check()
@@ -79,6 +91,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
 
   const loadTab = useCallback(async (tab: typeof activeTab) => {
     if (!salesUser) return
+    if (tab === 'profile') return
     const supabase = createClient()
     setTabLoading(true)
 
@@ -222,6 +235,34 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
     }
   }
 
+  const handleSaveProfile = async () => {
+    setProfileSaving(true); setProfileError(''); setProfileSuccess('')
+    const supabase = createClient()
+    const { error } = await (supabase as any).from('profiles').update(profileForm).eq('id', salesUser.id)
+    if (error) setProfileError(error.message)
+    else { setProfileSuccess('Profile updated successfully.'); setTimeout(() => setProfileSuccess(''), 3000) }
+    setProfileSaving(false)
+  }
+
+  const handleChangePassword = async () => {
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      setProfileError('Passwords do not match.'); return
+    }
+    if (passwordForm.new_password.length < 6) {
+      setProfileError('Password must be at least 6 characters.'); return
+    }
+    setProfileSaving(true); setProfileError(''); setProfileSuccess('')
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ password: passwordForm.new_password })
+    if (error) setProfileError(error.message)
+    else {
+      setProfileSuccess('Password changed successfully.')
+      setPasswordForm({ new_password: '', confirm_password: '' })
+      setTimeout(() => setProfileSuccess(''), 3000)
+    }
+    setProfileSaving(false)
+  }
+
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -240,7 +281,8 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
   const tabs = [
     { id: 'monitor' as const, label: 'Trade Monitor',   icon: Activity },
     { id: 'clients' as const, label: 'Clients & Leads', icon: Users    },
-    { id: 'leads' as const,   label: 'Leads',           icon: Target   },
+    { id: 'leads'   as const, label: 'Leads',           icon: Target   },
+    { id: 'profile' as const, label: 'My Profile',      icon: User     },
   ]
 
   return (
@@ -473,6 +515,103 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                     })}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {!tabLoading && activeTab === 'profile' && (
+            <div style={{ maxWidth: 560 }}>
+              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>MY PROFILE</h2>
+
+              {profileSuccess && (
+                <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', padding: '10px 14px', borderRadius: 6, marginBottom: 16, fontSize: 13 }}>
+                  {profileSuccess}
+                </div>
+              )}
+              {profileError && (
+                <div style={{ background: 'rgba(239,83,80,0.1)', border: '1px solid rgba(239,83,80,0.3)', color: '#EF5350', padding: '10px 14px', borderRadius: 6, marginBottom: 16, fontSize: 13 }}>
+                  {profileError}
+                </div>
+              )}
+
+              {/* Profile Information */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,215,0,0.15)', borderRadius: 12, padding: 24, marginBottom: 20 }}>
+                <h3 style={{ color: '#FFD700', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>PROFILE INFORMATION</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>FULL NAME</label>
+                    <input
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
+                      value={profileForm.full_name}
+                      onChange={e => setProfileForm({ ...profileForm, full_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>EMAIL ADDRESS</label>
+                    <input
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', color: '#555', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none', cursor: 'not-allowed' }}
+                      value={salesUser?.email || ''}
+                      disabled
+                    />
+                    <div style={{ color: '#555', fontSize: 11, marginTop: 4 }}>Email cannot be changed</div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>PHONE NUMBER</label>
+                    <input
+                      type="tel"
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
+                      value={profileForm.phone_number}
+                      onChange={e => setProfileForm({ ...profileForm, phone_number: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>COUNTRY</label>
+                    <input
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
+                      value={profileForm.country}
+                      onChange={e => setProfileForm({ ...profileForm, country: e.target.value })}
+                    />
+                  </div>
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={profileSaving}
+                    style={{ background: profileSaving ? '#555' : '#FFD700', color: '#000', border: 'none', borderRadius: 6, padding: '12px', fontSize: 13, fontWeight: 700, cursor: profileSaving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em' }}
+                  >
+                    {profileSaving ? 'SAVING…' : 'SAVE CHANGES'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Change Password */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,215,0,0.15)', borderRadius: 12, padding: 24, marginBottom: 20 }}>
+                <h3 style={{ color: '#FFD700', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>CHANGE PASSWORD</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>NEW PASSWORD</label>
+                    <input
+                      type="password"
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
+                      value={passwordForm.new_password}
+                      onChange={e => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>CONFIRM NEW PASSWORD</label>
+                    <input
+                      type="password"
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
+                      value={passwordForm.confirm_password}
+                      onChange={e => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                    />
+                  </div>
+                  <button
+                    onClick={handleChangePassword}
+                    disabled={profileSaving}
+                    style={{ background: profileSaving ? '#555' : '#FFD700', color: '#000', border: 'none', borderRadius: 6, padding: '12px', fontSize: 13, fontWeight: 700, cursor: profileSaving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em' }}
+                  >
+                    {profileSaving ? 'UPDATING…' : 'UPDATE PASSWORD'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
