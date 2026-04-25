@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Activity, DollarSign, LogOut, ShieldCheck, Check, X, Bell, Eye, Settings, CreditCard, ArrowDownCircle, ArrowUpCircle, UserCheck, Target, Copy } from 'lucide-react'
+import { Users, Activity, DollarSign, LogOut, ShieldCheck, Check, X, Bell, Eye, EyeOff, Settings, CreditCard, ArrowDownCircle, ArrowUpCircle, UserCheck, Target, Copy, Power } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { usePendingTransactions } from '@/hooks/usePendingTransactions'
 import { useMarketData } from '@/hooks/useMarketData'
@@ -65,6 +65,17 @@ function SalesTeamPanel({ subAdminId, companySlug }: { subAdminId: string; compa
   const [addForm, setAddForm] = useState({ full_name: '', email: '', password: '', phone_number: '', country: '' })
   const [addLoading, setAddLoading] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [editSales, setEditSales] = useState<any>(null)
+  const [editForm, setEditForm] = useState({ full_name: '', phone_number: '', country: '' })
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [showCurrentPw, setShowCurrentPw] = useState(false)
+  const [copiedCurrentPw, setCopiedCurrentPw] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [showNewPw, setShowNewPw] = useState(false)
+  const [copiedPw, setCopiedPw] = useState(false)
+  const [copiedReferral, setCopiedReferral] = useState(false)
+  const [editLoading, setEditLoading] = useState(false)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const loadSalesData = useCallback(async () => {
     if (!subAdminId) return
@@ -74,7 +85,7 @@ function SalesTeamPanel({ subAdminId, companySlug }: { subAdminId: string; compa
     setSalesLimit(profile?.sales_limit || 0)
 
     const { data: users } = await (supabase.from('profiles') as any)
-      .select('id, full_name, email, referral_code, phone_number, country, created_at')
+      .select('id, full_name, email, referral_code, phone_number, country, created_at, is_banned')
       .eq('assigned_to', subAdminId)
       .eq('role', 'sales')
     setSalesUsers(users || [])
@@ -113,6 +124,82 @@ function SalesTeamPanel({ subAdminId, companySlug }: { subAdminId: string; compa
       alert('Error: ' + err.message)
     } finally {
       setAddLoading(false)
+    }
+  }
+
+  const openEditSales = async (u: any) => {
+    setEditSales(u)
+    setEditForm({ full_name: u.full_name || '', phone_number: u.phone_number || '', country: u.country || '' })
+    setCurrentPassword('')
+    setShowCurrentPw(false)
+    setCopiedCurrentPw(false)
+    setNewPassword('')
+    setShowNewPw(false)
+    setCopiedPw(false)
+    setCopiedReferral(false)
+    try {
+      const res = await fetch('/api/decrypt-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: u.id }),
+      })
+      const json = await res.json()
+      if (res.ok) setCurrentPassword(json.password || '')
+    } catch {
+      // no password stored yet — leave blank
+    }
+  }
+
+  const handleEditSales = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editSales) return
+    setEditLoading(true)
+    try {
+      const profileRes = await fetch('/api/update-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: editSales.id, action: 'update_profile', data: editForm }),
+      })
+      const profileJson = await profileRes.json()
+      if (!profileRes.ok) throw new Error(profileJson.error || 'Profile update failed')
+
+      if (newPassword.trim()) {
+        if (newPassword.length < 6) throw new Error('Password must be at least 6 characters')
+        const pwRes = await fetch('/api/update-client', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: editSales.id, action: 'update_password', data: { password: newPassword } }),
+        })
+        const pwJson = await pwRes.json()
+        if (!pwRes.ok) throw new Error(pwJson.error || 'Password update failed')
+      }
+
+      setSalesUsers(prev => prev.map(u => u.id === editSales.id ? { ...u, ...editForm } : u))
+      setEditSales(null)
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  const handleToggleBan = async (u: any) => {
+    const banning = !u.is_banned
+    if (!confirm(`${banning ? 'Disable' : 'Enable'} ${u.full_name || u.email}?`)) return
+    setTogglingId(u.id)
+    try {
+      const res = await fetch('/api/update-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: u.id, action: 'toggle_ban', data: { ban: banning } }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Toggle failed')
+      setSalesUsers(prev => prev.map(s => s.id === u.id ? { ...s, is_banned: banning } : s))
+    } catch (err: any) {
+      alert('Error: ' + err.message)
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -182,6 +269,102 @@ function SalesTeamPanel({ subAdminId, companySlug }: { subAdminId: string; compa
         </div>
       )}
 
+      {/* Edit Sales Modal */}
+      {editSales && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setEditSales(null)}>
+          <div style={{ background: '#0f0f0f', border: '1px solid #FFD700', borderRadius: 14, padding: 32, width: 420, maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, margin: '0 0 4px' }}>MANAGE SALES USER</h3>
+            <p style={{ color: '#6b7280', fontSize: 12, margin: '0 0 20px' }}>{editSales.email}</p>
+            <form onSubmit={handleEditSales} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { key: 'full_name', label: 'Full Name *', type: 'text', required: true },
+                { key: 'phone_number', label: 'Phone', type: 'text', required: false },
+                { key: 'country', label: 'Country', type: 'text', required: false },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>{f.label.toUpperCase()}</label>
+                  <input
+                    type={f.type}
+                    required={f.required}
+                    value={(editForm as any)[f.key]}
+                    onChange={e => setEditForm({ ...editForm, [f.key]: e.target.value })}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', fontSize: 14 }}
+                  />
+                </div>
+              ))}
+
+              {/* Referral link */}
+              {editSales?.referral_code && (
+                <div>
+                  <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>REFERRAL LINK</label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input
+                      readOnly
+                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${editSales.referral_code}`}
+                      style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', color: '#6b7280', padding: '10px 44px 10px 14px', borderRadius: 6, outline: 'none', fontSize: 12, fontFamily: 'monospace', cursor: 'default' }}
+                    />
+                    <button type="button" onClick={() => { const link = `${window.location.origin}/register?ref=${editSales.referral_code}`; navigator.clipboard.writeText(link); setCopiedReferral(true); setTimeout(() => setCopiedReferral(false), 2000) }} style={{ position: 'absolute', right: 8, background: 'transparent', border: 'none', color: copiedReferral ? '#22c55e' : '#6b7280', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
+                      <Copy size={15} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Current password (read-only, decrypted) */}
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>CURRENT PASSWORD</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    readOnly
+                    type={showCurrentPw ? 'text' : 'password'}
+                    value={currentPassword || ''}
+                    placeholder={currentPassword ? '' : 'Not set'}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', color: '#9ca3af', padding: '10px 80px 10px 14px', borderRadius: 6, outline: 'none', fontSize: 14, cursor: 'default' }}
+                  />
+                  <div style={{ position: 'absolute', right: 8, display: 'flex', gap: 4 }}>
+                    <button type="button" onClick={() => setShowCurrentPw(v => !v)} style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
+                      {showCurrentPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                    <button type="button" onClick={() => { if (currentPassword) { navigator.clipboard.writeText(currentPassword); setCopiedCurrentPw(true); setTimeout(() => setCopiedCurrentPw(false), 2000) } }} style={{ background: 'transparent', border: 'none', color: copiedCurrentPw ? '#22c55e' : '#6b7280', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
+                      <Copy size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* New password */}
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>NEW PASSWORD <span style={{ color: '#4b5563', fontWeight: 400 }}>(leave blank to keep current)</span></label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showNewPw ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 80px 10px 14px', borderRadius: 6, outline: 'none', fontSize: 14 }}
+                  />
+                  <div style={{ position: 'absolute', right: 8, display: 'flex', gap: 4 }}>
+                    <button type="button" onClick={() => setShowNewPw(v => !v)} style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
+                      {showNewPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                    <button type="button" onClick={() => { if (newPassword) { navigator.clipboard.writeText(newPassword); setCopiedPw(true); setTimeout(() => setCopiedPw(false), 2000) } }} style={{ background: 'transparent', border: 'none', color: copiedPw ? '#22c55e' : '#6b7280', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
+                      <Copy size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                <button type="button" onClick={() => setEditSales(null)} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #333', color: '#9ca3af', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                <button type="submit" disabled={editLoading} style={{ flex: 1, padding: '11px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, cursor: editLoading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14 }}>
+                  {editLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
@@ -199,35 +382,43 @@ function SalesTeamPanel({ subAdminId, companySlug }: { subAdminId: string; compa
 
       {/* Table */}
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['NAME', 'EMAIL', 'REFERRAL LINK', 'ASSIGNED TRADERS', 'JOINED'].map(h => (
+              {['NAME', 'EMAIL', 'ASSIGNED TRADERS', 'STATUS', 'JOINED', 'ACTIONS'].map(h => (
                 <th key={h} style={thS}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {salesUsers.length === 0 ? (
-              <tr><td colSpan={5} style={{ ...tdS, textAlign: 'center', color: '#4b5563' }}>No sales users yet. Click "Add Sales User" to get started.</td></tr>
+              <tr><td colSpan={6} style={{ ...tdS, textAlign: 'center', color: '#4b5563' }}>No sales users yet. Click "Add Sales User" to get started.</td></tr>
             ) : salesUsers.map((u: any) => (
               <tr key={u.id} style={{ borderBottom: '1px solid #111' }}>
                 <td style={{ ...tdS, color: '#fff', fontWeight: 600 }}>{u.full_name || '—'}</td>
                 <td style={{ ...tdS, color: '#9ca3af' }}>{u.email || '—'}</td>
-                <td style={{ ...tdS }}>
-                  {u.referral_code ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: '#6b7280', fontSize: 12, fontFamily: 'monospace', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        /register?ref={u.referral_code}
-                      </span>
-                      <button onClick={() => copyReferralLink(u.referral_code, u.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: copiedId === u.id ? 'rgba(34,197,94,0.15)' : 'transparent', border: `1px solid ${copiedId === u.id ? '#22c55e' : '#374151'}`, color: copiedId === u.id ? '#22c55e' : '#9ca3af', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <Copy size={12} /> {copiedId === u.id ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                  ) : '—'}
-                </td>
                 <td style={{ ...tdS, color: '#FFD700', fontWeight: 700, textAlign: 'center' }}>{traderCounts[u.id] ?? 0}</td>
+                <td style={{ ...tdS }}>
+                  <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: u.is_banned ? 'rgba(239,83,80,0.15)' : 'rgba(34,197,94,0.15)', color: u.is_banned ? '#EF5350' : '#22c55e', border: `1px solid ${u.is_banned ? 'rgba(239,83,80,0.4)' : 'rgba(34,197,94,0.4)'}` }}>
+                    {u.is_banned ? 'DISABLED' : 'ACTIVE'}
+                  </span>
+                </td>
                 <td style={{ ...tdS, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                <td style={{ ...tdS }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button onClick={() => openEditSales(u)} style={{ padding: '5px 12px', background: 'transparent', border: '1px solid #374151', color: '#9ca3af', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      Manage
+                    </button>
+                    <button
+                      onClick={() => handleToggleBan(u)}
+                      disabled={togglingId === u.id}
+                      title={u.is_banned ? 'Enable user' : 'Disable user'}
+                      style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: `1px solid ${u.is_banned ? 'rgba(34,197,94,0.5)' : 'rgba(239,83,80,0.5)'}`, color: u.is_banned ? '#22c55e' : '#EF5350', borderRadius: 6, cursor: togglingId === u.id ? 'not-allowed' : 'pointer', opacity: togglingId === u.id ? 0.5 : 1, flexShrink: 0 }}
+                    >
+                      <Power size={14} strokeWidth={2} />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
