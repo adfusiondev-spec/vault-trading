@@ -92,10 +92,11 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // SALES: must be on /sub-admin/[slug]/sales/*
+  // SALES: allowed on /sub-admin/[slug]/sales/* and /sub-admin/[slug]/client/[id]
   if (role === 'sales') {
     const onSalesPath = /^\/sub-admin\/[^/]+\/sales(\/|$)/.test(pathname);
-    if (!onSalesPath) {
+    const onClientPath = /^\/sub-admin\/[^/]+\/client\/[^/]+(\/|$)/.test(pathname);
+    if (!onSalesPath && !onClientPath) {
       const url = request.nextUrl.clone();
       url.pathname = company_slug
         ? `/sub-admin/${company_slug}/sales`

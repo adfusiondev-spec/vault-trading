@@ -190,8 +190,8 @@ const [savingProfile, setSavingProfile] = useState(false)
 
         const { data: profile } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
         
-        // Allow sub_admin OR super_admin (for impersonation)
-        if (!profile || (profile.role !== 'sub_admin' && profile.role !== 'super_admin')) {
+        // Allow sub_admin, super_admin, or sales
+        if (!profile || (profile.role !== 'sub_admin' && profile.role !== 'super_admin' && profile.role !== 'sales')) {
           if (profile?.role === 'trader' || profile?.role === 'user') router.push('/user')
           else router.push('/login')
           return

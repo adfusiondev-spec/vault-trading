@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 
 const LEAD_STATUSES = [
   'New Prospect', 'Active', 'Hot Lead', 'Cold',
@@ -85,6 +86,13 @@ export async function PATCH(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const { data: profile } = await supabase
+      .from('profiles').select('role, assigned_to').eq('id', user.id).single()
+
+    if (!['sub_admin', 'sales'].includes((profile as any)?.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await req.json()
     const { lead_id, status, notes, assigned_sales_id } = body
 
@@ -106,13 +114,22 @@ export async function PATCH(req: NextRequest) {
 
     if (notes !== undefined) updateData.notes = notes
 
-    // Allow null (unassign) or a valid id
     if ('assigned_sales_id' in body) {
       updateData.assigned_sales_id = assigned_sales_id ?? null
     }
 
-    const { data, error } = await (supabase.from('leads') as any)
-      .update(updateData).eq('id', lead_id).select().single()
+    // Use service role to bypass RLS — auth is already validated above
+    const adminSupa = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data, error } = await adminSupa
+      .from('leads')
+      .update(updateData)
+      .eq('id', lead_id)
+      .select()
+      .single()
 
     if (error) {
       console.error('PATCH leads error:', error)

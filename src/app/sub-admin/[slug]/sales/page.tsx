@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Activity, Users, DollarSign, Target, LogOut, ShieldCheck } from 'lucide-react'
+import { Activity, Users, Target, LogOut, ShieldCheck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const LEAD_STATUSES = [
@@ -39,11 +39,10 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [salesUser, setSalesUser] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState<'monitor' | 'clients' | 'financial' | 'leads'>('monitor')
+  const [activeTab, setActiveTab] = useState<'monitor' | 'clients' | 'leads'>('monitor')
 
   const [trades, setTrades] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
-  const [transactions, setTransactions] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])
   const [tabLoading, setTabLoading] = useState(false)
 
@@ -112,24 +111,6 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
           .order('created_at', { ascending: false })
         setClients(clientData || [])
 
-      } else if (tab === 'financial') {
-        const { data: assignedTraders } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('assigned_sales_id', salesUser.id)
-          .eq('role', 'trader')
-
-        const traderIds = (assignedTraders || []).map((t: any) => t.id)
-        if (traderIds.length === 0) { setTransactions([]); return }
-
-        const { data: txData } = await (supabase as any)
-          .from('transactions')
-          .select('*, profiles:user_id(full_name, email)')
-          .in('user_id', traderIds)
-          .order('created_at', { ascending: false })
-          .limit(100)
-        setTransactions(txData || [])
-
       } else if (tab === 'leads') {
         const res = await fetch('/api/leads')
         const json = await res.json()
@@ -160,10 +141,11 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
     if (salesUser) loadTab(activeTab)
   }, [salesUser, activeTab, loadTab])
 
-  const handleStatusChange = async (leadId: string, newStatus: string) => {
+  const handleStatusChange = async (leadId: string, newStatus: string, selectEl: HTMLSelectElement) => {
     if (newStatus === 'Active / Funded') {
       if (!confirm('Mark this lead as Active / Funded?')) return
     }
+    selectEl.blur()
     try {
       const res = await fetch('/api/leads', {
         method: 'PATCH',
@@ -173,14 +155,14 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
       const data = await res.json()
       if (res.ok && data.success) {
         setLeads((prev: any[]) => prev.map((l: any) =>
-          l.id === leadId ? { ...l, status: newStatus } : l
+          l.id === leadId
+            ? { ...l, status: newStatus, updated_at: data.lead?.updated_at || l.updated_at }
+            : l
         ))
       } else {
-        console.error('Status update failed:', data.error)
         alert(`Failed to save: ${data.error || 'Unknown error'}`)
       }
     } catch (err: any) {
-      console.error('Status update error:', err)
       alert('Network error. Please try again.')
     }
   }
@@ -222,14 +204,13 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
   }
 
   const tabs = [
-    { id: 'monitor' as const,  label: 'Trade Monitor',    icon: Activity   },
-    { id: 'clients' as const,  label: 'Clients & Leads',  icon: Users      },
-    { id: 'financial' as const,label: 'Financial Desk',   icon: DollarSign },
-    { id: 'leads' as const,    label: 'Leads',            icon: Target     },
+    { id: 'monitor' as const, label: 'Trade Monitor',   icon: Activity },
+    { id: 'clients' as const, label: 'Clients & Leads', icon: Users    },
+    { id: 'leads' as const,   label: 'Leads',           icon: Target   },
   ]
 
   return (
-    <div style={{ minHeight: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: '#050505', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff' }}>
+    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: '#050505', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff' }}>
 
       {/* Header */}
       <div style={{ background: '#0a0a0a', borderBottom: '1px solid #1a1a1a', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -271,9 +252,6 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
               >
                 <Icon size={17} strokeWidth={isActive ? 2.5 : 1.5} />
                 {tab.label}
-                {tab.id === 'financial' && (
-                  <span style={{ marginLeft: 'auto', fontSize: 9, background: 'rgba(245,158,11,0.2)', color: '#f59e0b', padding: '2px 6px', borderRadius: 4, fontWeight: 700, letterSpacing: '0.5px' }}>READ ONLY</span>
-                )}
               </button>
             )
           })}
@@ -335,14 +313,14 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                   <thead>
                     <tr>
-                      {['NAME', 'EMAIL', 'BALANCE', 'COUNTRY', 'STATUS', 'JOINED'].map(h => (
+                      {['NAME', 'EMAIL', 'BALANCE', 'COUNTRY', 'STATUS', 'JOINED', 'ACTIONS'].map(h => (
                         <th key={h} style={thStyle}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {clients.length === 0 ? (
-                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>No assigned clients yet.</td></tr>
+                      <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>No assigned clients yet.</td></tr>
                     ) : clients.map((c: any) => (
                       <tr key={c.id} style={{ borderBottom: '1px solid #111' }}>
                         <td style={{ ...tdStyle, color: '#fff', fontWeight: 600 }}>{c.full_name || '—'}</td>
@@ -359,43 +337,13 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                           )}
                         </td>
                         <td style={{ ...tdStyle, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(c.created_at).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {!tabLoading && activeTab === 'financial' && (
-            <div>
-              <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid #f59e0b', borderRadius: 8, padding: '10px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ color: '#f59e0b', fontSize: 13, fontWeight: 600 }}>👁️ Read-Only — You can view but not approve transactions</span>
-              </div>
-              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>FINANCIAL DESK</h2>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
-                  <thead>
-                    <tr>
-                      {['DATE', 'CLIENT', 'TYPE', 'AMOUNT', 'METHOD', 'STATUS'].map(h => (
-                        <th key={h} style={thStyle}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.length === 0 ? (
-                      <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>No transactions from assigned clients.</td></tr>
-                    ) : transactions.map((tx: any) => (
-                      <tr key={tx.id} style={{ borderBottom: '1px solid #111' }}>
-                        <td style={{ ...tdStyle, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(tx.created_at).toLocaleDateString()}</td>
-                        <td style={{ ...tdStyle, color: '#fff' }}>{tx.profiles?.full_name || tx.profiles?.email || '—'}</td>
                         <td style={{ ...tdStyle }}>
-                          <span style={{ color: tx.type === 'deposit' ? '#22c55e' : '#f59e0b', fontWeight: 600, textTransform: 'capitalize' }}>{tx.type}</span>
-                        </td>
-                        <td style={{ ...tdStyle, color: '#fff', fontWeight: 600 }}>${Number(tx.amount).toFixed(2)}</td>
-                        <td style={{ ...tdStyle, color: '#9ca3af' }}>{tx.payment_method?.toUpperCase() || '—'}</td>
-                        <td style={{ ...tdStyle }}>
-                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', background: tx.status === 'approved' ? 'rgba(34,197,94,0.15)' : tx.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: tx.status === 'approved' ? '#22c55e' : tx.status === 'rejected' ? '#ef4444' : '#f59e0b' }}>{tx.status}</span>
+                          <button
+                            onClick={() => router.push(`/sub-admin/${slug}/client/${c.id}`)}
+                            style={{ padding: '5px 14px', background: 'transparent', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, color: '#FFD700', fontSize: 10, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
+                          >
+                            MANAGE →
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -463,7 +411,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                             ) : (
                               <select
                                 value={lead.status}
-                                onChange={e => handleStatusChange(lead.id, e.target.value)}
+                                onChange={e => handleStatusChange(lead.id, e.target.value, e.currentTarget)}
                                 style={{ background: s.bg, border: `1px solid ${s.color}`, color: s.color, borderRadius: 6, padding: '4px 8px', fontSize: 12, fontWeight: 700, cursor: 'pointer', outline: 'none' }}
                               >
                                 {LEAD_STATUSES.map(st => (
