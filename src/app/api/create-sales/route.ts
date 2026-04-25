@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { encryptPassword } from '@/lib/crypto'
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
         phone_number: phone_number || null,
         country: country || null,
         referral_code: referralCode,
+        encrypted_password: encryptPassword(password),
       })
       .eq('id', newUser.user.id)
 
