@@ -69,6 +69,8 @@ function LoginForm() {
       router.push('/admin')
     } else if (profile?.role === 'sub_admin') {
       router.push(`/sub-admin/${profile.company_slug || 'platform'}`)
+    } else if (profile?.role === 'sales') {
+      router.push(`/sub-admin/${profile.company_slug}/sales`)
     } else {
       router.push('/user')
     }
