@@ -11,7 +11,7 @@ import { useNotifications } from '@/hooks/useNotifications'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import SubAdminPaymentSettingsPanel from '@/components/sub-admin/PaymentSettingsPanel'
-import { isTrialExpired } from '@/lib/trial'
+import { isTrialExpired, isTrial } from '@/lib/trial'
 
 // Mock Data
 const INITIAL_TRADES: any[] = []
@@ -998,7 +998,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
         const { data: company } = await (supabase as any)
           .from('profiles')
-          .select('id, full_name, invite_token')
+          .select('id, full_name, invite_token, subscription_package, expires_at')
           .eq('company_slug', slug)
           .eq('role', 'sub_admin')
           .single()
@@ -1567,7 +1567,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         </div>
       </div>
 
-      {companyProfile?.subscription_package === 'Trial_1day' && !trialExpired && (
+      {isTrial(companyProfile?.subscription_package) && !trialExpired && (
         <div style={{
           background: 'rgba(245,158,11,0.1)',
           border: '1px solid #f59e0b',
@@ -2096,7 +2096,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
             {/* ── Payment Settings ── */}
             {activeTab === 'payment-settings' && (
               <div className="crm-section fade-in" style={{ padding: 24 }}>
-                <SubAdminPaymentSettingsPanel />
+                <SubAdminPaymentSettingsPanel isTrial={isTrial(companyProfile?.subscription_package)} />
               </div>
             )}
 

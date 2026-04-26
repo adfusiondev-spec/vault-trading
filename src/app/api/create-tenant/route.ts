@@ -103,6 +103,27 @@ export async function POST(request: NextRequest) {
     // Non-fatal — tenant is still created successfully
   }
 
+  // Auto-inject default virtual payment settings for new tenant
+  const { error: paymentSettingsError } = await adminClient
+    .from('sub_admin_payment_settings')
+    .insert({
+      sub_admin_id: newUser.user.id,
+      bank_name: 'Nokhba Global Bank',
+      bank_account_holder: 'Virtual Trial Account',
+      bank_rib: 'VIRTUAL-IBAN-00000000',
+      bank_is_active: true,
+      btc_address: 'bc1q-virtual-nokhba-default-btc-address-000',
+      btc_is_active: true,
+      usdt_address: 'T-virtual-nokhba-default-usdt-address-000',
+      usdt_network: 'TRC20',
+      usdt_is_active: true,
+    })
+
+  if (paymentSettingsError) {
+    console.error('Failed to create default payment settings:', paymentSettingsError)
+    // Non-fatal — tenant is still created successfully
+  }
+
   return NextResponse.json({
     success: true,
     user_id: newUser.user.id,

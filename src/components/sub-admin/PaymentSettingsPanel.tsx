@@ -25,7 +25,7 @@ const defaultSettings: PaymentSettings = {
   bank_is_active: true,
 }
 
-export default function SubAdminPaymentSettingsPanel() {
+export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTrial?: boolean }) {
   const [settings, setSettings] = useState<PaymentSettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -74,6 +74,7 @@ export default function SubAdminPaymentSettingsPanel() {
     padding: '20px',
     flex: 1,
     minWidth: '260px',
+    opacity: isTrial ? 0.6 : 1,
   }
   const labelStyle = {
     color: '#888', fontSize: '12px',
@@ -86,10 +87,12 @@ export default function SubAdminPaymentSettingsPanel() {
     color: '#fff', fontSize: '13px',
     boxSizing: 'border-box' as const,
     outline: 'none',
+    cursor: isTrial ? 'not-allowed' : 'auto',
   }
   const toggleStyle = {
     display: 'flex', alignItems: 'center',
-    gap: '8px', cursor: 'pointer',
+    gap: '8px', cursor: isTrial ? 'not-allowed' : 'pointer',
+    pointerEvents: isTrial ? 'none' as const : 'auto' as const,
   }
 
   if (loading) {
@@ -106,6 +109,19 @@ export default function SubAdminPaymentSettingsPanel() {
       <h2 style={{ color: '#FFD700', fontSize: '18px', fontWeight: 700, marginBottom: '24px' }}>
         PAYMENT SETTINGS
       </h2>
+
+      {isTrial && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.35)',
+          borderRadius: 8, padding: '12px 16px', marginBottom: 20,
+        }}>
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          <span style={{ color: '#fbbf24', fontSize: 13, fontWeight: 600 }}>
+            Option not allowed in the Trial Plan.
+          </span>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
 
@@ -130,6 +146,7 @@ export default function SubAdminPaymentSettingsPanel() {
               placeholder="TRC20 address..."
               value={settings.usdt_address}
               onChange={e => update('usdt_address', e.target.value)}
+              disabled={isTrial}
               style={{ ...inputStyle, fontFamily: 'monospace' }}
             />
           </div>
@@ -138,7 +155,8 @@ export default function SubAdminPaymentSettingsPanel() {
             <select
               value={settings.usdt_network}
               onChange={e => update('usdt_network', e.target.value)}
-              style={{ ...inputStyle, cursor: 'pointer' }}
+              disabled={isTrial}
+              style={{ ...inputStyle, cursor: isTrial ? 'not-allowed' : 'pointer' }}
             >
               <option value="TRC20">TRC20</option>
               <option value="ERC20">ERC20</option>
@@ -168,6 +186,7 @@ export default function SubAdminPaymentSettingsPanel() {
               placeholder="1A... or bc1..."
               value={settings.btc_address}
               onChange={e => update('btc_address', e.target.value)}
+              disabled={isTrial}
               style={{ ...inputStyle, fontFamily: 'monospace' }}
             />
           </div>
@@ -194,6 +213,7 @@ export default function SubAdminPaymentSettingsPanel() {
               placeholder="CIH Bank / Attijariwafa..."
               value={settings.bank_name}
               onChange={e => update('bank_name', e.target.value)}
+              disabled={isTrial}
               style={inputStyle}
             />
           </div>
@@ -204,6 +224,7 @@ export default function SubAdminPaymentSettingsPanel() {
               placeholder="Full name..."
               value={settings.bank_account_holder}
               onChange={e => update('bank_account_holder', e.target.value)}
+              disabled={isTrial}
               style={inputStyle}
             />
           </div>
@@ -214,6 +235,7 @@ export default function SubAdminPaymentSettingsPanel() {
               placeholder="007 XXX XXXXXXXXXX XX"
               value={settings.bank_rib}
               onChange={e => update('bank_rib', e.target.value)}
+              disabled={isTrial}
               style={{ ...inputStyle, fontFamily: 'monospace' }}
             />
           </div>
@@ -227,17 +249,19 @@ export default function SubAdminPaymentSettingsPanel() {
       <button
         type="button"
         onClick={handleSave}
-        disabled={saving}
+        disabled={saving || isTrial}
+        title={isTrial ? 'Option not allowed in the Trial Plan.' : undefined}
         style={{
           width: '100%', padding: '12px',
-          backgroundColor: saving ? '#b8960a' : '#FFD700',
+          backgroundColor: isTrial ? '#4b4b00' : saving ? '#b8960a' : '#FFD700',
           border: 'none', borderRadius: '6px',
-          color: '#000', fontSize: '14px', fontWeight: 700,
-          cursor: saving ? 'not-allowed' : 'pointer',
+          color: isTrial ? '#888' : '#000', fontSize: '14px', fontWeight: 700,
+          cursor: isTrial || saving ? 'not-allowed' : 'pointer',
           letterSpacing: '0.5px',
+          opacity: isTrial ? 0.5 : 1,
         }}
       >
-        {saving ? 'Saving...' : saved ? '✓ Saved Successfully' : 'Save Payment Settings'}
+        {isTrial ? 'Option not allowed in the Trial Plan.' : saving ? 'Saving...' : saved ? '✓ Saved Successfully' : 'Save Payment Settings'}
       </button>
 
     </div>
