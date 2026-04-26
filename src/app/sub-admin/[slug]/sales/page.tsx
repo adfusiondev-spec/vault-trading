@@ -295,7 +295,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
             <ShieldCheck size={20} strokeWidth={2.5} color="#000" />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.08em' }}>The Vault</div>
+            <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.08em' }}>NOKHBA</div>
             <div style={{ color: '#FFD700', fontSize: 10, letterSpacing: '0.1em', fontWeight: 600 }}>SALES DASHBOARD</div>
           </div>
         </div>
