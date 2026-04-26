@@ -373,7 +373,7 @@ const [savingProfile, setSavingProfile] = useState(false)
         padding: '0 24px', background: 'rgba(11,14,17,0.95)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <button onClick={() => router.push(`/sub-admin/${slug}`)} style={{
+          <button onClick={() => router.push(viewerRole === 'sales' ? `/sub-admin/${slug}/sales` : `/sub-admin/${slug}`)} style={{
             display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.05)',
             border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '8px 16px',
             borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, transition: 'all 0.2s'
