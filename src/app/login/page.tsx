@@ -12,6 +12,7 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const companySlug = searchParams.get('company')
+  const msg = searchParams.get('msg')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
@@ -115,6 +116,17 @@ function LoginForm() {
           <div style={{ marginTop: 12 }}><LanguageToggle /></div>
         </div>
 
+        {/* ── Success message (from signup redirect) ── */}
+        {msg && (
+          <div style={{
+            background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)',
+            borderRadius: 6, padding: '12px 16px', marginBottom: 20,
+            color: '#22c55e', fontSize: 12, letterSpacing: '0.03em', textAlign: 'center',
+          }}>
+            {msg}
+          </div>
+        )}
+
         {/* ── Form ── */}
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           
@@ -191,6 +203,16 @@ function LoginForm() {
               <>{t.access_vault} <ChevronRight size={16} strokeWidth={2.5} /></>
             )}
           </button>
+
+          {/* Free Trial link */}
+          <div style={{ textAlign: 'center', marginTop: 4 }}>
+            <Link href="/signup" style={{
+              color: '#FFD700', fontSize: 12, letterSpacing: '0.05em',
+              fontWeight: 600, textDecoration: 'none',
+            }}>
+              Don&apos;t have an account? — START FREE TRIAL
+            </Link>
+          </div>
         </form>
 
         {/* ── Footer ── */}

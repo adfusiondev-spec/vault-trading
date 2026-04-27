@@ -60,17 +60,22 @@ export async function POST(request: NextRequest) {
   const now = new Date().toISOString()
   const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
+  // Normalize any trial variant ('trial', 'Trial', etc.) to the canonical 'Trial_1day'
+  const rawPackage = subscriptionPackage || 'Trial_1day'
+  const normalizedPackage = /^trial/i.test(rawPackage) ? 'Trial_1day' : rawPackage
+
   const profileUpdate: any = {
     role: 'sub_admin',
     assigned_to: user.id,
     company_slug: slug,
     encrypted_password: encryptPassword(password),
-    subscription_package: subscriptionPackage || 'Trial_1day',
+    subscription_package: normalizedPackage,
   }
 
-  if (profileUpdate.subscription_package === 'Trial_1day') {
+  if (normalizedPackage === 'Trial_1day') {
     profileUpdate.trial_started_at = now
     profileUpdate.expires_at = expires
+    profileUpdate.sales_limit = 3
   }
 
   const { error: roleError } = await adminClient
