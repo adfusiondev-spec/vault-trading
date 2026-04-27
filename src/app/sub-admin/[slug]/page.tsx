@@ -12,13 +12,12 @@ import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import SubAdminPaymentSettingsPanel from '@/components/sub-admin/PaymentSettingsPanel'
 import { isTrialExpired, isTrial } from '@/lib/trial'
+import { calculateMonthlyPrice } from '@/lib/pricing'
 
 // Mock Data
 const INITIAL_TRADES: any[] = []
 const INITIAL_FINANCIALS: any[] = []
 const INITIAL_LEADS: any[] = []
-
-type DbPackage = { id: string; key: string; label: string; monthly_price: number; yearly_price: number }
 
 const TRIAL_OPTIONS = [
   { value: 'none',       label: 'None',        days: 0 },
@@ -31,6 +30,8 @@ const BILLING_CYCLES = [
 ] as const
 
 type BillingCycle = 'monthly' | 'yearly'
+
+const ASSET_CLASSES = ['Crypto', 'Forex', 'Commodities', 'Global Indices', 'Saudi Indices'] as const
 
 function CopyAddressButton({ address }: { address: string }) {
   const [copied, setCopied] = useState(false)
@@ -856,7 +857,6 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const [proofSignedUrl, setProofSignedUrl] = useState<string | null>(null)
   const [proofDownloading, setProofDownloading] = useState(false)
   const [subscriptionPayments, setSubscriptionPayments] = useState<any[]>([])
-  const [dbPackages, setDbPackages] = useState<DbPackage[]>([])
   // Auth State
   const [loading, setLoading] = useState(true)
   const [isAuthorized, setIsAuthorized] = useState(false)
@@ -904,36 +904,24 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const [paymentLoading, setPaymentLoading] = useState(false)
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null)
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
-  const [selectedPackage, setSelectedPackage] = useState<string>('pro')
+  const [selectedMarkets, setSelectedMarkets] = useState<string[]>(['Crypto', 'Forex', 'Commodities'])
   const [trialOption, setTrialOption] = useState('none')
   // Admin payment settings (fetched when modal opens)
   const [adminPaymentSettings, setAdminPaymentSettings] = useState<any>(null)
   const [adminSettingsLoading, setAdminSettingsLoading] = useState(false)
 
-  const activePkg = dbPackages.find(p => p.key === selectedPackage)
-
   useEffect(() => {
     if (trialOption !== 'none') { setPaymentAmount('0.00'); return }
-    const price = billingCycle === 'monthly' ? (activePkg?.monthly_price ?? 0) : (activePkg?.yearly_price ?? 0)
-    setPaymentAmount(price.toFixed(2))
-  }, [billingCycle, selectedPackage, trialOption, activePkg])
+    const mktKeys = selectedMarkets.map(m =>
+      m === 'Global Indices' ? 'global_indices' : m === 'Saudi Indices' ? 'saudi_indices' : m.toLowerCase()
+    )
+    const { monthly } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard')
+    setPaymentAmount(monthly.toFixed(2))
+  }, [billingCycle, selectedMarkets, trialOption])
 
   useEffect(() => {
     setMounted(true)
     const supabase = createClient()
-
-    // Load packages from DB
-    ;(supabase as any)
-      .from('subscription_packages')
-      .select('id, key, label, monthly_price, yearly_price')
-      .eq('is_active', true)
-      .order('sort_order')
-      .then(({ data }: { data: DbPackage[] | null }) => {
-        if (data && data.length > 0) {
-          setDbPackages(data)
-          setSelectedPackage(data[0].key)
-        }
-      })
 
     const checkAuth = async () => {
       try {
@@ -1169,9 +1157,10 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     setPaymentLoading(true)
     try {
       const payableAmount = trialOption !== 'none' ? 0 : parseFloat(paymentAmount)
-      const fullPrice = billingCycle === 'monthly'
-        ? (activePkg?.monthly_price ?? 0)
-        : (activePkg?.yearly_price ?? 0)
+      const mktKeys = selectedMarkets.map(m =>
+        m === 'Global Indices' ? 'global_indices' : m === 'Saudi Indices' ? 'saudi_indices' : m.toLowerCase()
+      )
+      const { monthly: fullPrice } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard')
       const trialDays = TRIAL_OPTIONS.find(t => t.value === trialOption)?.days ?? 0
 
       const fd = new FormData()
@@ -1179,7 +1168,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
       fd.append('amount', String(payableAmount))
       fd.append('method', paymentMethod)
       fd.append('reference', `SUB-${Date.now()}`)
-      fd.append('package', selectedPackage)
+      fd.append('package', selectedMarkets.join(', '))
       fd.append('billing_cycle', billingCycle)
       fd.append('trial_option', trialOption)
       fd.append('trial_days', String(trialDays))
@@ -1198,7 +1187,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
       setPaymentMethod('')
       setPaymentProofFile(null)
       setBillingCycle('monthly')
-      setSelectedPackage('pro')
+      setSelectedMarkets(['Crypto', 'Forex', 'Commodities'])
       setTrialOption('none')
     } catch (err: any) {
       alert('Error: ' + err.message)
@@ -2255,21 +2244,47 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </select>
               </div>}
 
-              {/* PACKAGE — hidden for trial */}
-              {trialOption === 'none' && <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PACKAGE</label>
-                <select
-                  value={selectedPackage}
-                  onChange={e => setSelectedPackage(e.target.value)}
-                  style={{ width: '100%', padding: '12px 16px', background: 'rgba(20,22,28,1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFFFFF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '18px', paddingRight: 40 }}
-                >
-                  {dbPackages.map(pkg => (
-                    <option key={pkg.key} value={pkg.key}>
-                      {pkg.label} — ${billingCycle === 'monthly' ? pkg.monthly_price : pkg.yearly_price}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
-                    </option>
-                  ))}
-                </select>
-              </div>}
+              {/* MARKET ACCESS CONTROL — hidden for trial */}
+              {trialOption === 'none' && (
+                <div>
+                  <label style={{ display: 'block', color: '#FFD700', fontSize: 11, fontWeight: 700, marginBottom: 8, letterSpacing: '0.05em' }}>MARKET ACCESS CONTROL</label>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', background: 'rgba(255,255,255,0.02)', padding: '12px 14px', borderRadius: 6, border: '1px solid rgba(255,215,0,0.15)' }}>
+                    {ASSET_CLASSES.map(asset => {
+                      const isChecked = selectedMarkets.includes(asset)
+                      return (
+                        <label key={asset} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: isChecked ? '#FFD700' : '#c0c3ce', cursor: 'pointer', fontWeight: isChecked ? 600 : 400 }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={e => setSelectedMarkets(prev =>
+                              e.target.checked ? [...prev, asset] : prev.filter(a => a !== asset)
+                            )}
+                            style={{ accentColor: '#FFD700', width: 15, height: 15, cursor: 'pointer' }}
+                          />
+                          {asset}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ESTIMATED COST — always visible */}
+              {(() => {
+                const mktKeys = selectedMarkets.map(m =>
+                  m === 'Global Indices' ? 'global_indices' : m === 'Saudi Indices' ? 'saudi_indices' : m.toLowerCase()
+                )
+                const billingKey = billingCycle === 'yearly' ? 'annual' : 'monthly'
+                const pricing = calculateMonthlyPrice(mktKeys, billingKey, trialOption !== 'none' ? 'Trial' : 'Standard')
+                return (
+                  <div style={{ padding: '14px 18px', background: 'rgba(255,215,0,0.04)', borderRadius: 8, border: '1px solid rgba(255,215,0,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>ESTIMATED COST</span>
+                    <span style={{ color: '#FFD700', fontSize: 20, fontWeight: 800 }}>
+                      {pricing.monthly === 0 ? 'FREE TRIAL' : pricing.label}
+                    </span>
+                  </div>
+                )
+              })()}
 
               {/* TRIAL PERIOD */}
               <div>
@@ -2413,7 +2428,13 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 />
                 {trialOption !== 'none' && (
                   <div style={{ marginTop: 5, fontSize: 11, color: '#8a8e9b' }}>
-                    After trial: ${billingCycle === 'monthly' ? (activePkg?.monthly_price ?? 0) : (activePkg?.yearly_price ?? 0)}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
+                    After trial: ${(() => {
+                      const mktKeys = selectedMarkets.map(m =>
+                        m === 'Global Indices' ? 'global_indices' : m === 'Saudi Indices' ? 'saudi_indices' : m.toLowerCase()
+                      )
+                      const { monthly } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard')
+                      return monthly
+                    })()}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
                   </div>
                 )}
               </div>
