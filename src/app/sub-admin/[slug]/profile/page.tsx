@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { ShieldCheck, ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '@/lib/i18n'
+import { isTrial, isTrialActive, isTrialExpired } from '@/lib/trial'
 
 export default function SubAdminProfilePage() {
   const { t } = useTranslation()
@@ -101,25 +102,44 @@ export default function SubAdminProfilePage() {
         {/* Subscription */}
         <div style={cardStyle}>
           <h2 style={{ color: '#FFD700', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.subscription.toUpperCase()}</h2>
-          {subscription ? (
+          {profile && isTrial(profile.subscription_package) ? (
+            // ── Trial branch: read directly from profiles columns ──
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
               {[
-                { label: t.package, value: subscription.package || 'N/A', color: '#FFD700' },
-                { label: t.status, value: subscription.status, color: statusColor(subscription.status) },
-                { label: 'Billing', value: subscription.billing_cycle || 'N/A', color: '#fff' },
-                { label: t.amount, value: `$${subscription.full_amount || subscription.amount || 0}`, color: '#fff' },
-                { label: 'Start Date', value: new Date(subscription.created_at).toLocaleDateString(), color: '#fff' },
+                { label: t.package,    value: '1-Day Free Trial', color: '#FFD700' },
+                { label: t.status,     value: isTrialActive(profile) ? 'Active Trial' : 'Expired', color: isTrialActive(profile) ? '#22c55e' : '#EF5350' },
+                { label: 'Billing',    value: 'Free',             color: '#fff' },
+                { label: t.amount,     value: '$0',               color: '#fff' },
+                { label: 'Started',    value: profile.trial_started_at ? new Date(profile.trial_started_at).toLocaleString() : 'N/A', color: '#fff' },
+                { label: 'Expires',    value: profile.expires_at  ? new Date(profile.expires_at).toLocaleString()  : 'N/A', color: isTrialExpired(profile) ? '#EF5350' : '#fff' },
+              ].map(({ label, value, color }) => (
+                <div key={String(label)}>
+                  <div style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 4, letterSpacing: '0.05em' }}>{String(label).toUpperCase()}</div>
+                  <div style={{ color, fontSize: 15, fontWeight: 600 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          ) : subscription ? (
+            // ── Paid branch: read from subscription_payments row ──
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              {[
+                { label: t.package,    value: subscription.package || 'N/A',                                        color: '#FFD700' },
+                { label: t.status,     value: subscription.status,                                                   color: statusColor(subscription.status) },
+                { label: 'Billing',    value: subscription.billing_cycle || 'N/A',                                   color: '#fff' },
+                { label: t.amount,     value: `$${subscription.full_amount || subscription.amount || 0}`,            color: '#fff' },
+                { label: 'Start Date', value: new Date(subscription.created_at).toLocaleDateString(),                color: '#fff' },
                 ...(subscription.trial_option && subscription.trial_option !== 'none'
                   ? [{ label: 'Trial', value: `${subscription.trial_days} days`, color: '#22c55e' }]
                   : []),
               ].map(({ label, value, color }) => (
-                <div key={label}>
+                <div key={String(label)}>
                   <div style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 4, letterSpacing: '0.05em' }}>{String(label).toUpperCase()}</div>
                   <div style={{ color, fontSize: 15, fontWeight: 600, textTransform: 'capitalize' }}>{value}</div>
                 </div>
               ))}
             </div>
           ) : (
+            // ── Empty state ──
             <div style={{ color: '#555', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>{t.no_subscription}</div>
           )}
         </div>
