@@ -310,7 +310,7 @@ export default function Dashboard() {
     if (o) {
       const mapped = o.map((x:any) => ({
         id: x.id, type: x.type==='buy'?'Buy':'Sell', symbol: x.symbol, label: x.symbol,
-        amountUSD: Number(x.amount), qty: Number(x.quantity),
+        amountUSD: Number(x.amount), qty: Number(x.quantity) || (Number(x.amount) / Number(x.entry_price || 1)),
         entryPrice: Number(x.entry_price), exitPrice: Number(x.exit_price || 0),
         pnl: Number(x.profit_loss || 0),
         status: x.status==='open'?'Open': x.status==='closed'?'Closed':'Completed',

@@ -504,7 +504,7 @@ const [savingProfile, setSavingProfile] = useState(false)
                         <span style={{ marginLeft: 8, padding: '2px 8px', borderRadius: 4, fontSize: 11, background: trade.type === 'Buy' ? 'rgba(38,166,154,0.1)' : 'rgba(239,83,80,0.1)', color: trade.type === 'Buy' ? '#26a69a' : '#ef5350' }}>{trade.type}</span>
                       </td>
                       <td style={{ padding: '14px 16px', fontFamily: 'monospace', color: '#FFD700' }}>${trade.amountUSD.toLocaleString()}</td>
-                      <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontWeight: 600, color: (trade.pnl || 0) >= 0 ? '#26a69a' : '#ef5350' }}>{(trade.pnl || 0) >= 0 ? '+' : ''}{(trade.pnl || 0)}</td>
+                      <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontWeight: 600, color: (() => { const lp = prices[trade.symbol || trade.asset]?.price || trade.entryPrice; const pnl = trade.type === 'Buy' ? (lp - trade.entryPrice) * trade.qty : (trade.entryPrice - lp) * trade.qty; return pnl >= 0 ? '#26a69a' : '#ef5350' })() }}>{(() => { const lp = prices[trade.symbol || trade.asset]?.price || trade.entryPrice; const pnl = trade.type === 'Buy' ? (lp - trade.entryPrice) * trade.qty : (trade.entryPrice - lp) * trade.qty; return <>{pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</> })()}</td>
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                         <button 
                           onClick={async () => {

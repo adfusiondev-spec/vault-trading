@@ -845,7 +845,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const router = useRouter()
   const { t } = useTranslation()
   const { slug } = React.use(params)
-  useMarketData()
+  const { prices } = useMarketData()
 
 
   const [mounted, setMounted] = useState(false)
@@ -1075,6 +1075,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               type: o.type === 'buy' ? 'Buy' : 'Sell',
               amount: parseFloat(o.amount || '0'),
               entryPrice: parseFloat(o.entry_price || '0'),
+              qty: parseFloat(o.quantity || '0') || (parseFloat(o.amount || '0') / parseFloat(o.entry_price || '1')),
               status: o.status,
               profit_loss: parseFloat(o.profit_loss || '0'),
             }))
@@ -1703,11 +1704,24 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                           </td>
                           <td style={{
                             padding: '12px 16px',
-                            color: Number(trade.profit_loss) >= 0 ? '#22c55e' : '#ef4444',
                             fontWeight: 'bold',
+                            color: (() => {
+                              if (trade.status === 'open') {
+                                const lp = prices[trade.asset]?.price || trade.entryPrice
+                                const pnl = trade.type === 'Buy' ? (lp - trade.entryPrice) * trade.qty : (trade.entryPrice - lp) * trade.qty
+                                return pnl >= 0 ? '#22c55e' : '#ef4444'
+                              }
+                              return Number(trade.profit_loss) >= 0 ? '#22c55e' : '#ef4444'
+                            })(),
                           }}>
-                            {Number(trade.profit_loss) >= 0 ? '+' : ''}
-                            {Number(trade.profit_loss || 0).toFixed(2)} USD
+                            {(() => {
+                              if (trade.status === 'open') {
+                                const lp = prices[trade.asset]?.price || trade.entryPrice
+                                const pnl = trade.type === 'Buy' ? (lp - trade.entryPrice) * trade.qty : (trade.entryPrice - lp) * trade.qty
+                                return <>{pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} USD</>
+                              }
+                              return <>{Number(trade.profit_loss) >= 0 ? '+' : ''}{Number(trade.profit_loss || 0).toFixed(2)} USD</>
+                            })()}
                           </td>
                           <td style={{ padding: '12px 16px' }}>
                             <span style={{
