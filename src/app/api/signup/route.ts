@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         trial_started_at: now,
         expires_at: expires,
         sales_limit: 3,
+        allowed_markets: ['crypto', 'forex', 'commodities', 'global_indices', 'saudi_indices'],
       })
       .eq('id', newUser.user.id)
 

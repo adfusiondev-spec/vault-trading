@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
     profileUpdate.trial_started_at = now
     profileUpdate.expires_at = expires
     profileUpdate.sales_limit = 3
+    profileUpdate.allowed_markets = ['crypto', 'forex', 'commodities', 'global_indices', 'saudi_indices']
   }
 
   const { error: roleError } = await adminClient

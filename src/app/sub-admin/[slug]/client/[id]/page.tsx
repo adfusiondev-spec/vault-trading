@@ -232,9 +232,23 @@ const [savingProfile, setSavingProfile] = useState(false)
       })
       .subscribe()
 
-    return () => { 
+    // Refresh clientTxs (and thus totalDeposits/totalWithdrawals) whenever
+    // a transaction changes status (e.g. pending → approved)
+    const txChannel = supabase.channel('client-tx-sync')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'transactions',
+        filter: `user_id=eq.${clientId}`
+      }, () => {
+        loadClientData()
+      })
+      .subscribe()
+
+    return () => {
         supabase.removeChannel(tradesChannel)
-        supabase.removeChannel(walletChannel) 
+        supabase.removeChannel(walletChannel)
+        supabase.removeChannel(txChannel)
     }
   }, [router, clientId, loadClientData])
 

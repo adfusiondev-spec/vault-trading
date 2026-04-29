@@ -1088,12 +1088,14 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     }
     
     syncData()
-    // Subscribe to all changes
+    // Subscribe to all changes — wallets covers balance updates triggered by
+    // the transaction-approval DB trigger (which fires after transactions changes)
     const channel = supabase
       .channel('admin-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, syncData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trades' }, syncData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, syncData)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'wallets' }, syncData)
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
