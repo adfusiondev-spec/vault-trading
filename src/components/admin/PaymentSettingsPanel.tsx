@@ -1,7 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useTranslation } from '@/lib/i18n'
 
 export default function PaymentSettingsPanel() {
+  const { t } = useTranslation()
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -42,7 +44,6 @@ export default function PaymentSettingsPanel() {
     }
   }
 
-  // Reuse EXACT same card/input styles from Financial Desk or other panels
   const cardStyle = {
     backgroundColor: '#1a1a1a',
     border: '1px solid #2a2a2a',
@@ -50,9 +51,9 @@ export default function PaymentSettingsPanel() {
     padding: '20px',
     marginBottom: '16px'
   }
-  const labelStyle = { 
-    color: '#888', fontSize: '12px', 
-    display: 'block', marginBottom: '6px' 
+  const labelStyle = {
+    color: '#888', fontSize: '12px',
+    display: 'block', marginBottom: '6px'
   }
   const inputStyle = {
     width: '100%', padding: '10px 12px',
@@ -68,117 +69,118 @@ export default function PaymentSettingsPanel() {
 
   return (
     <div style={{ width: '100%', paddingBottom: '24px' }}>
-      
+
       <h2 style={{ color: '#FFD700', fontSize: '18px', fontWeight: 700, marginBottom: '24px' }}>
-        PAYMENT SETTINGS
+        {t.payment_settings.toUpperCase()}
       </h2>
 
       <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
 
         {/* USDT */}
         <div style={{ ...cardStyle, flex: 1, marginBottom: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>USDT (Tether)</span>
-          <label style={toggleStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>{t.usdt_tether}</span>
+            <label style={toggleStyle}>
+              <input
+                type="checkbox"
+                checked={settings.usdt_is_active}
+                onChange={e => setSettings(p => ({ ...p, usdt_is_active: e.target.checked }))}
+              />
+              <span style={{ color: '#888', fontSize: '12px' }}>{t.active_toggle}</span>
+            </label>
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>{t.wallet_address}</label>
             <input
-              type="checkbox"
-              checked={settings.usdt_is_active}
-              onChange={e => setSettings(p => ({ ...p, usdt_is_active: e.target.checked }))}
+              type="text"
+              value={settings.usdt_address}
+              onChange={e => setSettings(p => ({ ...p, usdt_address: e.target.value }))}
+              placeholder="TRC20 address..."
+              style={{ ...inputStyle, fontFamily: 'monospace' }}
             />
-            <span style={{ color: '#888', fontSize: '12px' }}>Active</span>
-          </label>
+          </div>
+          <div>
+            <label style={labelStyle}>{t.network}</label>
+            <select
+              value={settings.usdt_network}
+              onChange={e => setSettings(p => ({ ...p, usdt_network: e.target.value }))}
+              style={inputStyle}
+            >
+              <option value="TRC20">TRC20</option>
+              <option value="ERC20">ERC20</option>
+              <option value="BEP20">BEP20 (BSC)</option>
+            </select>
+          </div>
         </div>
-        <div style={{ marginBottom: '12px' }}>
-          <label style={labelStyle}>Wallet Address</label>
-          <input
-            type="text"
-            value={settings.usdt_address}
-            onChange={e => setSettings(p => ({ ...p, usdt_address: e.target.value }))}
-            placeholder="TRC20 address..."
-            style={{ ...inputStyle, fontFamily: 'monospace' }}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Network</label>
-          <select
-            value={settings.usdt_network}
-            onChange={e => setSettings(p => ({ ...p, usdt_network: e.target.value }))}
-            style={inputStyle}
-          >
-            <option value="TRC20">TRC20</option>
-            <option value="ERC20">ERC20</option>
-            <option value="BEP20">BEP20 (BSC)</option>
-          </select>
-        </div>
-      </div>
 
         {/* Bitcoin */}
         <div style={{ ...cardStyle, flex: 1, marginBottom: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>Bitcoin (BTC)</span>
-          <label style={toggleStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>{t.bitcoin_btc}</span>
+            <label style={toggleStyle}>
+              <input
+                type="checkbox"
+                checked={settings.btc_is_active}
+                onChange={e => setSettings(p => ({ ...p, btc_is_active: e.target.checked }))}
+              />
+              <span style={{ color: '#888', fontSize: '12px' }}>{t.active_toggle}</span>
+            </label>
+          </div>
+          <div>
+            <label style={labelStyle}>{t.wallet_address}</label>
             <input
-              type="checkbox"
-              checked={settings.btc_is_active}
-              onChange={e => setSettings(p => ({ ...p, btc_is_active: e.target.checked }))}
+              type="text"
+              value={settings.btc_address}
+              onChange={e => setSettings(p => ({ ...p, btc_address: e.target.value }))}
+              placeholder="1A... or bc1..."
+              style={{ ...inputStyle, fontFamily: 'monospace' }}
             />
-            <span style={{ color: '#888', fontSize: '12px' }}>Active</span>
-          </label>
+          </div>
         </div>
-        <div>
-          <label style={labelStyle}>Wallet Address</label>
-          <input
-            type="text"
-            value={settings.btc_address}
-            onChange={e => setSettings(p => ({ ...p, btc_address: e.target.value }))}
-            placeholder="1A... or bc1..."
-            style={{ ...inputStyle, fontFamily: 'monospace' }}
-          />
-        </div>
-        </div>
+
         {/* Bank Transfer */}
         <div style={{ ...cardStyle, flex: 1, marginBottom: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>Bank Transfer</span>
-          <label style={toggleStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>{t.bank_transfer}</span>
+            <label style={toggleStyle}>
+              <input
+                type="checkbox"
+                checked={settings.bank_is_active}
+                onChange={e => setSettings(p => ({ ...p, bank_is_active: e.target.checked }))}
+              />
+              <span style={{ color: '#888', fontSize: '12px' }}>{t.active_toggle}</span>
+            </label>
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>{t.bank_name_label}</label>
             <input
-              type="checkbox"
-              checked={settings.bank_is_active}
-              onChange={e => setSettings(p => ({ ...p, bank_is_active: e.target.checked }))}
+              type="text"
+              value={settings.bank_name}
+              onChange={e => setSettings(p => ({ ...p, bank_name: e.target.value }))}
+              placeholder="CIH Bank / Attijariwafa..."
+              style={inputStyle}
             />
-            <span style={{ color: '#888', fontSize: '12px' }}>Active</span>
-          </label>
-        </div>
-        <div style={{ marginBottom: '12px' }}>
-          <label style={labelStyle}>Bank Name</label>
-          <input
-            type="text"
-            value={settings.bank_name}
-            onChange={e => setSettings(p => ({ ...p, bank_name: e.target.value }))}
-            placeholder="CIH Bank / Attijariwafa..."
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ marginBottom: '12px' }}>
-          <label style={labelStyle}>Account Holder</label>
-          <input
-            type="text"
-            value={settings.bank_account_holder}
-            onChange={e => setSettings(p => ({ ...p, bank_account_holder: e.target.value }))}
-            placeholder="Full name..."
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>RIB / IBAN</label>
-          <input
-            type="text"
-            value={settings.bank_rib}
-            onChange={e => setSettings(p => ({ ...p, bank_rib: e.target.value }))}
-            placeholder="007 XXX XXXXXXXXXX XX"
-            style={{ ...inputStyle, fontFamily: 'monospace' }}
-          />
-        </div>
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <label style={labelStyle}>{t.account_holder}</label>
+            <input
+              type="text"
+              value={settings.bank_account_holder}
+              onChange={e => setSettings(p => ({ ...p, bank_account_holder: e.target.value }))}
+              placeholder="Full name..."
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>{t.rib_iban}</label>
+            <input
+              type="text"
+              value={settings.bank_rib}
+              onChange={e => setSettings(p => ({ ...p, bank_rib: e.target.value }))}
+              placeholder="007 XXX XXXXXXXXXX XX"
+              style={{ ...inputStyle, fontFamily: 'monospace' }}
+            />
+          </div>
         </div>
       </div>
 
@@ -198,7 +200,7 @@ export default function PaymentSettingsPanel() {
           cursor: saving ? 'not-allowed' : 'pointer'
         }}
       >
-        {saving ? 'Saving...' : saved ? '✓ Saved Successfully' : 'Save Payment Settings'}
+        {saving ? t.saving : saved ? t.saved_successfully : t.save_payment_settings}
       </button>
 
     </div>

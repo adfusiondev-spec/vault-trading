@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ShieldCheck, ChevronRight } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n'
 
 const COUNTRIES = [
   'Saudi Arabia', 'United Arab Emirates', 'Kuwait', 'Qatar', 'Bahrain', 'Oman',
@@ -16,6 +17,7 @@ type Field = 'company_name' | 'full_name' | 'email' | 'password' | 'phone_number
 
 export default function SignupPage() {
   const router = useRouter()
+  const { t } = useTranslation()
   const [mounted, setMounted] = useState(false)
   const [focusedField, setFocusedField] = useState<Field | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -130,7 +132,7 @@ export default function SignupPage() {
             <ShieldCheck size={24} strokeWidth={2.5} color="#000" />
           </div>
           <h1 style={{ fontWeight: 800, fontSize: 20, letterSpacing: '0.15em', marginBottom: 4 }}>Nokhba</h1>
-          <p style={{ color: '#8a8e9b', fontSize: 12, letterSpacing: '0.05em' }}>1-Day Free Trial</p>
+          <p style={{ color: '#8a8e9b', fontSize: 12, letterSpacing: '0.05em' }}>{t.one_day_trial}</p>
         </div>
 
         {/* Form */}
@@ -141,7 +143,7 @@ export default function SignupPage() {
 
             {/* Row 1 — Left: Company Name */}
             <div>
-              <label style={labelStyle}>COMPANY NAME</label>
+              <label style={labelStyle}>{t.company_name}</label>
               <input
                 type="text"
                 value={form.company_name}
@@ -157,8 +159,8 @@ export default function SignupPage() {
             {/* Row 1 — Right: Administrator Name */}
             <div>
               <label style={labelStyle}>
-                ADMINISTRATOR NAME{' '}
-                <span style={{ color: '#4b5563', fontWeight: 400 }}>(optional)</span>
+                {t.administrator_name}{' '}
+                <span style={{ color: '#4b5563', fontWeight: 400 }}>{t.optional_label}</span>
               </label>
               <input
                 type="text"
@@ -173,7 +175,7 @@ export default function SignupPage() {
 
             {/* Row 2 — Left: Email */}
             <div>
-              <label style={labelStyle}>EMAIL ADDRESS</label>
+              <label style={labelStyle}>{t.email_address}</label>
               <input
                 type="email"
                 value={form.email}
@@ -188,7 +190,7 @@ export default function SignupPage() {
 
             {/* Row 2 — Right: Password */}
             <div>
-              <label style={labelStyle}>PASSWORD</label>
+              <label style={labelStyle}>{t.password.toUpperCase()}</label>
               <input
                 type="password"
                 value={form.password}
@@ -204,7 +206,7 @@ export default function SignupPage() {
 
             {/* Row 3 — Left: Phone Number */}
             <div>
-              <label style={labelStyle}>PHONE NUMBER</label>
+              <label style={labelStyle}>{t.phone_number.toUpperCase()}</label>
               <input
                 type="tel"
                 value={form.phone_number}
@@ -219,7 +221,7 @@ export default function SignupPage() {
 
             {/* Row 3 — Right: Country */}
             <div>
-              <label style={labelStyle}>COUNTRY</label>
+              <label style={labelStyle}>{t.country.toUpperCase()}</label>
               <select
                 value={form.country}
                 onChange={set('country')}
@@ -233,7 +235,7 @@ export default function SignupPage() {
                   color: form.country ? '#fff' : '#4b5563',
                 }}
               >
-                <option value="" disabled style={{ color: '#4b5563', background: '#0b0e11' }}>Select your country</option>
+                <option value="" disabled style={{ color: '#4b5563', background: '#0b0e11' }}>{t.select_country}</option>
                 {COUNTRIES.map(c => (
                   <option key={c} value={c} style={{ background: '#0b0e11', color: '#fff' }}>{c}</option>
                 ))}
@@ -273,7 +275,7 @@ export default function SignupPage() {
                 animation: 'spin 0.8s linear infinite',
               }} />
             ) : (
-              <>START FREE TRIAL <ChevronRight size={16} strokeWidth={2.5} /></>
+              <>{t.start_free_trial_btn} <ChevronRight size={16} strokeWidth={2.5} /></>
             )}
           </button>
         </form>
@@ -281,9 +283,9 @@ export default function SignupPage() {
         {/* Footer — full width */}
         <div style={{ marginTop: 20, textAlign: 'center' }}>
           <p style={{ color: '#8a8e9b', fontSize: 12 }}>
-            Already a member?{' '}
+            {t.already_member}{' '}
             <Link href="/login" style={{ color: '#FFD700', textDecoration: 'none', fontWeight: 600 }}>
-              Log in
+              {t.log_in}
             </Link>
           </p>
         </div>

@@ -46,8 +46,9 @@ NOKHBA is a **multi-role fintech trading platform** built on Next.js App Router 
 ### Route Structure
 
 ```
-/                                   → redirects to /user
+/                                   → public landing page (unauthenticated)
 /login, /register                   → public auth pages
+/signup                             → public sub-admin self-registration (Trial_1day)
 /reset-password                     → password reset page
 /admin                              → Super Admin dashboard
 /admin/profile                      → Super Admin profile settings
@@ -64,6 +65,8 @@ NOKHBA is a **multi-role fintech trading platform** built on Next.js App Router 
 ### Middleware & Auth
 
 `middleware.ts` (project root, **not** `src/`) handles session refresh and enforces role-based route protection. Always use `supabase.auth.getUser()` — never `getSession()` — in middleware and server code. Supabase Auth (email/password) provides the session; cookies carry it server-side.
+
+Public paths that bypass auth entirely: `/`, `/login`, `/register`, `/signup`, `/reset-password`, all `/api/*` routes, and static assets. Every other route is protected.
 
 ### Data Layer
 
@@ -106,6 +109,7 @@ Traders register via `/register?token=<invite_token>` which hits `api/register-v
 ### API Routes
 
 All under `src/app/api/`. Key ones:
+- `signup` — public sub-admin self-registration; creates auth user + profile + company_slug via service-role client; defaults to `Trial_1day` package
 - `create-trader` / `create-tenant` / `delete-tenant` — user provisioning (service-role)
 - `create-sales` — creates a `sales` role user under a sub_admin
 - `register-via-invite` — invite-token-based trader self-registration (service-role)

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useTranslation } from '@/lib/i18n'
 
 interface PaymentSettings {
   usdt_address: string
@@ -26,6 +27,7 @@ const defaultSettings: PaymentSettings = {
 }
 
 export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTrial?: boolean }) {
+  const { t } = useTranslation()
   const [settings, setSettings] = useState<PaymentSettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -98,7 +100,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '300px' }}>
-        <span style={{ color: '#FFD700', fontSize: '16px' }}>Loading payment settings...</span>
+        <span style={{ color: '#FFD700', fontSize: '16px' }}>{t.loading_payment_settings}</span>
       </div>
     )
   }
@@ -107,7 +109,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
     <div style={{ width: '100%', paddingBottom: '24px' }}>
 
       <h2 style={{ color: '#FFD700', fontSize: '18px', fontWeight: 700, marginBottom: '24px' }}>
-        PAYMENT SETTINGS
+        {t.payment_settings.toUpperCase()}
       </h2>
 
       {isTrial && (
@@ -118,7 +120,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
         }}>
           <span style={{ fontSize: 18 }}>⚠️</span>
           <span style={{ color: '#fbbf24', fontSize: 13, fontWeight: 600 }}>
-            Option not allowed in the Trial Plan.
+            {t.trial_plan_restriction}
           </span>
         </div>
       )}
@@ -128,7 +130,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
         {/* USDT */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>USDT (Tether)</span>
+            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>{t.usdt_tether}</span>
             <label style={toggleStyle}>
               <input
                 type="checkbox"
@@ -136,11 +138,11 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
                 onChange={e => update('usdt_is_active', e.target.checked)}
                 style={{ accentColor: '#FFD700', width: '15px', height: '15px' }}
               />
-              <span style={{ color: settings.usdt_is_active ? '#FFD700' : '#6b7280', fontSize: '12px', fontWeight: 600 }}>Active</span>
+              <span style={{ color: settings.usdt_is_active ? '#FFD700' : '#6b7280', fontSize: '12px', fontWeight: 600 }}>{t.active_toggle}</span>
             </label>
           </div>
           <div style={{ marginBottom: '12px' }}>
-            <label style={labelStyle}>Wallet Address</label>
+            <label style={labelStyle}>{t.wallet_address}</label>
             <input
               type="text"
               placeholder="TRC20 address..."
@@ -151,7 +153,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
             />
           </div>
           <div>
-            <label style={labelStyle}>Network</label>
+            <label style={labelStyle}>{t.network}</label>
             <select
               value={settings.usdt_network}
               onChange={e => update('usdt_network', e.target.value)}
@@ -168,7 +170,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
         {/* Bitcoin */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>Bitcoin (BTC)</span>
+            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>{t.bitcoin_btc}</span>
             <label style={toggleStyle}>
               <input
                 type="checkbox"
@@ -176,11 +178,11 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
                 onChange={e => update('btc_is_active', e.target.checked)}
                 style={{ accentColor: '#FFD700', width: '15px', height: '15px' }}
               />
-              <span style={{ color: settings.btc_is_active ? '#FFD700' : '#6b7280', fontSize: '12px', fontWeight: 600 }}>Active</span>
+              <span style={{ color: settings.btc_is_active ? '#FFD700' : '#6b7280', fontSize: '12px', fontWeight: 600 }}>{t.active_toggle}</span>
             </label>
           </div>
           <div>
-            <label style={labelStyle}>Wallet Address</label>
+            <label style={labelStyle}>{t.wallet_address}</label>
             <input
               type="text"
               placeholder="1A... or bc1..."
@@ -195,7 +197,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
         {/* Bank Transfer */}
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>Bank Transfer</span>
+            <span style={{ color: '#fff', fontSize: '14px', fontWeight: 600 }}>{t.bank_transfer}</span>
             <label style={toggleStyle}>
               <input
                 type="checkbox"
@@ -203,11 +205,11 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
                 onChange={e => update('bank_is_active', e.target.checked)}
                 style={{ accentColor: '#FFD700', width: '15px', height: '15px' }}
               />
-              <span style={{ color: settings.bank_is_active ? '#FFD700' : '#6b7280', fontSize: '12px', fontWeight: 600 }}>Active</span>
+              <span style={{ color: settings.bank_is_active ? '#FFD700' : '#6b7280', fontSize: '12px', fontWeight: 600 }}>{t.active_toggle}</span>
             </label>
           </div>
           <div style={{ marginBottom: '12px' }}>
-            <label style={labelStyle}>Bank Name</label>
+            <label style={labelStyle}>{t.bank_name_label}</label>
             <input
               type="text"
               placeholder="CIH Bank / Attijariwafa..."
@@ -218,7 +220,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
             />
           </div>
           <div style={{ marginBottom: '12px' }}>
-            <label style={labelStyle}>Account Holder</label>
+            <label style={labelStyle}>{t.account_holder}</label>
             <input
               type="text"
               placeholder="Full name..."
@@ -229,7 +231,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
             />
           </div>
           <div>
-            <label style={labelStyle}>RIB / IBAN</label>
+            <label style={labelStyle}>{t.rib_iban}</label>
             <input
               type="text"
               placeholder="007 XXX XXXXXXXXXX XX"
@@ -250,7 +252,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
         type="button"
         onClick={handleSave}
         disabled={saving || isTrial}
-        title={isTrial ? 'Option not allowed in the Trial Plan.' : undefined}
+        title={isTrial ? t.trial_plan_restriction : undefined}
         style={{
           width: '100%', padding: '12px',
           backgroundColor: isTrial ? '#4b4b00' : saving ? '#b8960a' : '#FFD700',
@@ -261,7 +263,7 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
           opacity: isTrial ? 0.5 : 1,
         }}
       >
-        {isTrial ? 'Option not allowed in the Trial Plan.' : saving ? 'Saving...' : saved ? '✓ Saved Successfully' : 'Save Payment Settings'}
+        {isTrial ? t.trial_plan_restriction : saving ? t.saving : saved ? t.saved_successfully : t.save_payment_settings}
       </button>
 
     </div>

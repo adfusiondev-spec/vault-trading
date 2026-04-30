@@ -1,7 +1,12 @@
+'use client'
+
 import Link from 'next/link'
 import { ShieldCheck, ChevronRight } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n'
 
 export default function LandingPage() {
+  const { t } = useTranslation()
+
   return (
     <div style={{
       height: '100vh', width: '100vw', overflow: 'hidden',
@@ -25,11 +30,9 @@ export default function LandingPage() {
           color: '#8a8e9b', fontSize: 14, letterSpacing: '0.04em',
           textDecoration: 'none', fontWeight: 500,
           transition: 'color 0.2s',
-        }}
-          onMouseOver={undefined}
-        >
-          Already a member?{' '}
-          <span style={{ color: '#FFD700', fontWeight: 600 }}>Log in</span>
+        }}>
+          {t.already_member}{' '}
+          <span style={{ color: '#FFD700', fontWeight: 600 }}>{t.log_in}</span>
         </Link>
       </div>
 
@@ -65,7 +68,7 @@ export default function LandingPage() {
           fontWeight: 600, margin: '14px 0 0',
           textTransform: 'uppercase',
         }}>
-          Secure Platform CRM System
+          {t.secure_trading}
         </p>
 
         {/* Divider */}
@@ -87,7 +90,7 @@ export default function LandingPage() {
           width: '100%', maxWidth: 340,
           justifyContent: 'center',
         }}>
-          Start 1-Day Free Trial
+          {t.start_free_trial}
           <ChevronRight size={16} strokeWidth={2.5} />
         </Link>
 
@@ -96,7 +99,7 @@ export default function LandingPage() {
           color: '#8a8e9b', fontSize: 13, letterSpacing: '0.04em',
           margin: '14px 0 0', fontWeight: 400,
         }}>
-          Free 24-hour access. No credit card required.
+          {t.trial_no_card}
         </p>
 
       </div>

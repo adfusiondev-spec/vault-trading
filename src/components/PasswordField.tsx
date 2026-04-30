@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Eye, EyeOff, Copy, Check } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n'
 
 interface PasswordFieldProps {
   userId: string
@@ -10,6 +11,7 @@ interface PasswordFieldProps {
 }
 
 export function PasswordField({ userId, label = 'Password', containerStyle }: PasswordFieldProps) {
+  const { t } = useTranslation()
   const [isVisible, setIsVisible] = useState(false)
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -83,7 +85,7 @@ export function PasswordField({ userId, label = 'Password', containerStyle }: Pa
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             opacity: (isLoading || !!error) ? 0.5 : 1,
           }}
-          title={isVisible ? 'Hide password' : 'Reveal password'}
+          title={isVisible ? t.hide_password : t.reveal_password}
         >
           {isLoading ? '…' : isVisible ? <EyeOff size={14} /> : <Eye size={14} />}
         </button>
@@ -98,14 +100,14 @@ export function PasswordField({ userId, label = 'Password', containerStyle }: Pa
               borderRadius: 6, padding: '10px 12px', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
             }}
-            title="Copy password"
+            title={t.copy_password}
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
           </button>
         )}
       </div>
       {error && <div style={{ color: '#EF5350', fontSize: 11, marginTop: 5 }}>⚠️ {error}</div>}
-      {!error && password && <div style={{ color: '#555', fontSize: 11, marginTop: 5 }}>🔐 Encrypted at rest. Click eye to reveal/hide.</div>}
+      {!error && password && <div style={{ color: '#555', fontSize: 11, marginTop: 5 }}>{t.encrypted_at_rest}</div>}
     </div>
   )
 }

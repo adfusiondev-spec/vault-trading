@@ -1597,12 +1597,12 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
           {[
             { id: 'monitor', icon: Activity, label: t.trade_monitor },
             { id: 'leads', icon: Users, label: t.clients },
-            { id: 'deposits', icon: ArrowDownCircle, label: 'Deposits' },
-            { id: 'withdrawals', icon: ArrowUpCircle, label: 'Withdrawals' },
-            { id: 'sales-team', icon: UserCheck, label: 'Sales Team' },
-            { id: 'leads-panel', icon: Target, label: 'Leads' },
-            { id: 'subscription', icon: CreditCard, label: 'Subscription' },
-            { id: 'payment-settings', icon: Settings, label: 'Payment Settings' },
+            { id: 'deposits', icon: ArrowDownCircle, label: t.deposits },
+            { id: 'withdrawals', icon: ArrowUpCircle, label: t.withdrawals },
+            { id: 'sales-team', icon: UserCheck, label: t.sales_team },
+            { id: 'leads-panel', icon: Target, label: t.leads_tab },
+            { id: 'subscription', icon: CreditCard, label: t.subscription },
+            { id: 'payment-settings', icon: Settings, label: t.payment_settings },
           ].map(item => {
             const Icon = item.icon
             const isActive = activeTab === item.id

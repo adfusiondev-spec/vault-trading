@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslation } from '@/lib/i18n'
 
 export function FinancialDesk() {
+  const { t } = useTranslation()
   const [payments, setPayments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -129,7 +131,7 @@ export function FinancialDesk() {
             alignItems: 'center', marginBottom: '24px' }}>
             <div>
               <h2 style={{ color: '#FFD700', fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
-                $ Subscription Payment Details
+                $ {t.sub_payment_details}
               </h2>
               <p style={{ color: '#6b7280', fontSize: '12px', margin: '4px 0 0' }}>
                 {sp.profiles?.company_slug || sp.profiles?.email || '—'}
@@ -143,10 +145,10 @@ export function FinancialDesk() {
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '240px' }}>
               <div style={{ color: '#FFD700', fontSize: '11px', fontWeight: 'bold',
-                letterSpacing: '1px', marginBottom: '8px' }}>PAYMENT INFO</div>
-              {row('Date', new Date(sp.created_at).toLocaleString())}
-              {row('Company', sp.profiles?.company_slug || sp.profiles?.full_name || '—')}
-              {row('Package',
+                letterSpacing: '1px', marginBottom: '8px' }}>{t.payment_info}</div>
+              {row(t.date, new Date(sp.created_at).toLocaleString())}
+              {row(t.company, sp.profiles?.company_slug || sp.profiles?.full_name || '—')}
+              {row(t.package,
                 <span style={{
                   padding: '2px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
                   background: sp.package === 'VIP' ? 'rgba(34,197,94,0.15)'
@@ -158,10 +160,10 @@ export function FinancialDesk() {
                        : sp.package === 'Standard' ? '#FFD700' : '#6b7280'}`,
                 }}>{sp.package || '—'}</span>
               )}
-              {row('Amount', `$${Number(sp.amount).toFixed(2)}`)}
-              {row('Method', sp.method?.toUpperCase() || '—')}
-              {row('Reference', sp.reference || '—')}
-              {row('Status',
+              {row(t.amount, `$${Number(sp.amount).toFixed(2)}`)}
+              {row(t.method, sp.method?.toUpperCase() || '—')}
+              {row(t.reference, sp.reference || '—')}
+              {row(t.status,
                 <span style={{
                   color: sp.status === 'Approved' ? '#22c55e'
                        : sp.status === 'Rejected' ? '#ef4444' : '#f59e0b',
@@ -172,10 +174,10 @@ export function FinancialDesk() {
 
             <div style={{ flex: 1, minWidth: '240px' }}>
               <div style={{ color: '#FFD700', fontSize: '11px', fontWeight: 'bold',
-                letterSpacing: '1px', marginBottom: '8px' }}>PAYMENT PROOF</div>
+                letterSpacing: '1px', marginBottom: '8px' }}>{t.payment_proof}</div>
               {subPaymentProofUrl ? (
                 <div>
-                  <img src={subPaymentProofUrl} alt="Payment Proof"
+                  <img src={subPaymentProofUrl} alt={t.payment_proof}
                     style={{ width: '100%', borderRadius: '8px',
                       border: '1px solid #333', maxHeight: '260px',
                       objectFit: 'contain', background: '#1a1a1a', display: 'block' }} />
@@ -186,7 +188,7 @@ export function FinancialDesk() {
                         background: 'transparent', border: '1px solid #374151',
                         color: '#9ca3af', borderRadius: '6px',
                         fontSize: '12px', textDecoration: 'none' }}>
-                      ↗ Open
+                      {t.open_link}
                     </a>
                     <button onClick={handleSubPaymentDownload}
                       disabled={subPaymentDownloading}
@@ -196,7 +198,7 @@ export function FinancialDesk() {
                         border: 'none', color: '#000', borderRadius: '6px',
                         fontSize: '12px', fontWeight: 'bold',
                         cursor: subPaymentDownloading ? 'not-allowed' : 'pointer' }}>
-                      {subPaymentDownloading ? '...' : '↓ Download'}
+                      {subPaymentDownloading ? '...' : t.download}
                     </button>
                   </div>
                 </div>
@@ -204,7 +206,7 @@ export function FinancialDesk() {
                 <div style={{ padding: '24px', background: '#111',
                   borderRadius: '8px', border: '1px dashed #333', textAlign: 'center' }}>
                   <p style={{ color: '#4b5563', fontSize: '13px', margin: 0 }}>
-                    No payment proof uploaded.
+                    {t.no_proof_uploaded}
                   </p>
                 </div>
               )}
@@ -223,7 +225,7 @@ export function FinancialDesk() {
                   borderRadius: '8px', fontSize: '14px', fontWeight: 'bold',
                   cursor: 'pointer', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', gap: '6px' }}>
-                ✓ Approve
+                ✓ {t.approve}
               </button>
               <button
                 onClick={async () => {
@@ -235,7 +237,7 @@ export function FinancialDesk() {
                   borderRadius: '8px', fontSize: '14px', fontWeight: 'bold',
                   cursor: 'pointer', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', gap: '6px' }}>
-                ✕ Reject
+                ✕ {t.reject}
               </button>
             </div>
           )}
@@ -252,7 +254,7 @@ export function FinancialDesk() {
   }
 
   if (loading) {
-    return <div style={{ padding: 20, color: '#8a8e9b' }}>Loading payments...</div>
+    return <div style={{ padding: 20, color: '#8a8e9b' }}>{t.loading_payments}</div>
   }
 
   return (
@@ -260,15 +262,15 @@ export function FinancialDesk() {
       <SubPaymentDetailModal />
       <div className="crm-section fade-in">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#FFD700', letterSpacing: '0.05em', margin: 0 }}>SUBSCRIPTION PAYMENTS</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#FFD700', letterSpacing: '0.05em', margin: 0 }}>{t.subscription_payments}</h2>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: '600px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #222' }}>
-                {['DATE', 'COMPANY', 'PACKAGE', 'AMOUNT', 'METHOD', 'STATUS', 'DETAIL'].map(h => (
-                  <th key={h} style={{
+                {[t.date, t.company, t.package, t.amount, t.method, t.status, t.detail].map((h, i) => (
+                  <th key={i} style={{
                     padding: '10px 14px',
                     textAlign: 'left',
                     color: '#6b7280',
@@ -276,13 +278,13 @@ export function FinancialDesk() {
                     fontSize: '11px',
                     letterSpacing: '0.5px',
                     whiteSpace: 'nowrap',
-                  }}>{h}</th>
+                  }}>{h.toUpperCase()}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {payments.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>No subscription payments.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 20, textAlign: 'center', color: '#8a8e9b' }}>{t.no_subscription_payments}</td></tr>
               ) : payments.map((fin: any) => (
                 <tr key={fin.id}
                   style={{ borderBottom: '1px solid #111' }}
@@ -344,7 +346,7 @@ export function FinancialDesk() {
                         borderRadius: '6px', fontSize: '12px', fontWeight: 'bold',
                         cursor: 'pointer', whiteSpace: 'nowrap',
                       }}>
-                      DETAIL
+                      {t.detail}
                     </button>
                   </td>
                 </tr>

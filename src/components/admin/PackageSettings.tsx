@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslation } from '@/lib/i18n'
 
 type Package = {
   id: string
@@ -17,6 +18,7 @@ type Package = {
 const emptyForm = { key: '', label: '', monthly_price: '', yearly_price: '' }
 
 export function PackageSettings() {
+  const { t } = useTranslation()
   const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -112,11 +114,11 @@ export function PackageSettings() {
   return (
     <div className="crm-section fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#FFD700', letterSpacing: '0.05em', margin: 0 }}>SUBSCRIPTION PACKAGES</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#FFD700', letterSpacing: '0.05em', margin: 0 }}>{t.subscription_packages}</h2>
         {!showAdd && !editingId && (
           <button onClick={() => { setShowAdd(true); setForm(emptyForm); setError('') }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#FFD700', border: 'none', borderRadius: 6, padding: '8px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 12, color: '#000' }}>
-            <Plus size={14} /> Add Package
+            <Plus size={14} /> {t.add_package}
           </button>
         )}
       </div>
@@ -126,15 +128,20 @@ export function PackageSettings() {
       <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 80px 100px', gap: 10, padding: '10px 16px', background: 'rgba(0,0,0,0.2)', color: '#8a8e9b', fontSize: 11, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <span>KEY</span><span>LABEL</span><span>MONTHLY (USD)</span><span>YEARLY (USD)</span><span>STATUS</span><span style={{ textAlign: 'right' }}>ACTIONS</span>
+          <span>{t.pkg_key}</span>
+          <span>{t.pkg_label}</span>
+          <span>{t.monthly_usd}</span>
+          <span>{t.yearly_usd}</span>
+          <span>{t.status.toUpperCase()}</span>
+          <span style={{ textAlign: 'right' }}>{t.actions.toUpperCase()}</span>
         </div>
 
         {showAdd && !editingId && <FormRow />}
 
         {loading ? (
-          <div style={{ padding: 24, textAlign: 'center', color: '#8a8e9b' }}>Loading…</div>
+          <div style={{ padding: 24, textAlign: 'center', color: '#8a8e9b' }}>{t.loading}</div>
         ) : packages.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: '#8a8e9b' }}>No packages yet. Add one above.</div>
+          <div style={{ padding: 24, textAlign: 'center', color: '#8a8e9b' }}>{t.no_packages}</div>
         ) : packages.map(pkg => (
           <React.Fragment key={pkg.id}>
             {editingId === pkg.id ? (
@@ -147,7 +154,7 @@ export function PackageSettings() {
                 <span style={{ fontFamily: 'monospace', color: '#26a69a' }}>${pkg.yearly_price.toFixed(2)}/yr</span>
                 <span>
                   <button onClick={() => handleToggle(pkg)} style={{ padding: '3px 10px', borderRadius: 12, fontSize: 10, fontWeight: 700, border: 'none', cursor: 'pointer', background: pkg.is_active ? 'rgba(38,166,154,0.15)' : 'rgba(255,255,255,0.07)', color: pkg.is_active ? '#26a69a' : '#8a8e9b' }}>
-                    {pkg.is_active ? 'ACTIVE' : 'OFF'}
+                    {pkg.is_active ? t.active_status : t.off_status}
                   </button>
                 </span>
                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>

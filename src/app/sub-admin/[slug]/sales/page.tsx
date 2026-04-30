@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Activity, Users, Target, LogOut, ShieldCheck, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslation } from '@/lib/i18n'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 const LEAD_STATUSES = [
   'New Prospect', 'Active', 'Hot Lead', 'Cold',
@@ -35,6 +37,7 @@ const tdStyle: React.CSSProperties = {
 export default function SalesDashboard({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter()
   const { slug } = React.use(params)
+  const { t } = useTranslation()
 
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -97,14 +100,13 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
 
     try {
       if (tab === 'monitor') {
-        // Get all trader IDs assigned to this sales rep
         const { data: assignedTraders } = await supabase
           .from('profiles')
           .select('id')
           .eq('assigned_sales_id', salesUser.id)
           .eq('role', 'trader')
 
-        const traderIds = (assignedTraders || []).map((t: any) => t.id)
+        const traderIds = (assignedTraders || []).map((tr: any) => tr.id)
         if (traderIds.length === 0) { setTrades([]); return }
 
         const { data: tradeData } = await supabase
@@ -128,7 +130,6 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
         const res = await fetch('/api/leads')
         const json = await res.json()
         const rawLeads = json.leads || []
-        // fetch is_active for converted leads
         const convertedIds = rawLeads
           .filter((l: any) => l.converted_to_trader_id)
           .map((l: any) => l.converted_to_trader_id)
@@ -168,7 +169,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
         .eq('assigned_sales_id', salesUser.id)
         .eq('role', 'trader')
 
-      const traderIds = (assignedTraders || []).map((t: any) => t.id)
+      const traderIds = (assignedTraders || []).map((tr: any) => tr.id)
       if (traderIds.length === 0) return
 
       channel = supabase
@@ -240,23 +241,23 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
     const supabase = createClient()
     const { error } = await (supabase as any).from('profiles').update(profileForm).eq('id', salesUser.id)
     if (error) setProfileError(error.message)
-    else { setProfileSuccess('Profile updated successfully.'); setTimeout(() => setProfileSuccess(''), 3000) }
+    else { setProfileSuccess(t.profile_updated); setTimeout(() => setProfileSuccess(''), 3000) }
     setProfileSaving(false)
   }
 
   const handleChangePassword = async () => {
     if (passwordForm.new_password !== passwordForm.confirm_password) {
-      setProfileError('Passwords do not match.'); return
+      setProfileError(t.passwords_dont_match); return
     }
     if (passwordForm.new_password.length < 6) {
-      setProfileError('Password must be at least 6 characters.'); return
+      setProfileError(t.password_too_short); return
     }
     setProfileSaving(true); setProfileError(''); setProfileSuccess('')
     const supabase = createClient()
     const { error } = await supabase.auth.updateUser({ password: passwordForm.new_password })
     if (error) setProfileError(error.message)
     else {
-      setProfileSuccess('Password changed successfully.')
+      setProfileSuccess(t.password_changed)
       setPasswordForm({ new_password: '', confirm_password: '' })
       setTimeout(() => setProfileSuccess(''), 3000)
     }
@@ -279,10 +280,10 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
   }
 
   const tabs = [
-    { id: 'monitor' as const, label: 'Trade Monitor',   icon: Activity },
-    { id: 'clients' as const, label: 'Clients & Leads', icon: Users    },
-    { id: 'leads'   as const, label: 'Leads',           icon: Target   },
-    { id: 'profile' as const, label: 'My Profile',      icon: User     },
+    { id: 'monitor' as const, label: t.trade_monitor,  icon: Activity },
+    { id: 'clients' as const, label: t.clients,         icon: Users    },
+    { id: 'leads'   as const, label: t.leads_tab,       icon: Target   },
+    { id: 'profile' as const, label: t.profile_tab,     icon: User     },
   ]
 
   return (
@@ -296,13 +297,14 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '0.08em' }}>NOKHBA</div>
-            <div style={{ color: '#FFD700', fontSize: 10, letterSpacing: '0.1em', fontWeight: 600 }}>SALES DASHBOARD</div>
+            <div style={{ color: '#FFD700', fontSize: 10, letterSpacing: '0.1em', fontWeight: 600 }}>{t.sales_dashboard}</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <span style={{ color: '#6b7280', fontSize: 13 }}>{salesUser?.email}</span>
+          <LanguageToggle />
           <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: '#9ca3af', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
-            <LogOut size={14} /> Logout
+            <LogOut size={14} /> {t.logout}
           </button>
         </div>
       </div>
@@ -344,35 +346,35 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
 
           {!tabLoading && activeTab === 'monitor' && (
             <div>
-              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>TRADE MONITOR</h2>
+              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.trade_monitor.toUpperCase()}</h2>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                   <thead>
                     <tr>
-                      {['DATE', 'TRADER', 'SYMBOL', 'TYPE', 'AMOUNT', 'P&L', 'STATUS'].map(h => (
-                        <th key={h} style={thStyle}>{h}</th>
+                      {[t.date, t.trader_col, t.symbol, t.type, t.amount, t.profit_loss, t.status].map((h, i) => (
+                        <th key={i} style={thStyle}>{h.toUpperCase()}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {trades.length === 0 ? (
-                      <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>No trades from assigned clients yet.</td></tr>
-                    ) : trades.map((t: any) => (
-                      <tr key={t.id} style={{ borderBottom: '1px solid #111' }}>
-                        <td style={{ ...tdStyle, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(t.created_at).toLocaleDateString()}</td>
-                        <td style={{ ...tdStyle, color: '#fff' }}>{t.profiles?.full_name || t.profiles?.email || '—'}</td>
-                        <td style={{ ...tdStyle, color: '#FFD700', fontWeight: 600 }}>{t.symbol}</td>
+                      <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>{t.no_trades_assigned}</td></tr>
+                    ) : trades.map((tr: any) => (
+                      <tr key={tr.id} style={{ borderBottom: '1px solid #111' }}>
+                        <td style={{ ...tdStyle, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(tr.created_at).toLocaleDateString()}</td>
+                        <td style={{ ...tdStyle, color: '#fff' }}>{tr.profiles?.full_name || tr.profiles?.email || '—'}</td>
+                        <td style={{ ...tdStyle, color: '#FFD700', fontWeight: 600 }}>{tr.symbol}</td>
                         <td style={{ ...tdStyle }}>
-                          <span style={{ color: t.type === 'buy' ? '#22c55e' : '#ef4444', fontWeight: 600, textTransform: 'uppercase' }}>{t.type}</span>
+                          <span style={{ color: tr.type === 'buy' ? '#22c55e' : '#ef4444', fontWeight: 600, textTransform: 'uppercase' }}>{tr.type}</span>
                         </td>
-                        <td style={{ ...tdStyle, color: '#fff' }}>${Number(t.amount || 0).toFixed(2)}</td>
+                        <td style={{ ...tdStyle, color: '#fff' }}>${Number(tr.amount || 0).toFixed(2)}</td>
                         <td style={{ ...tdStyle }}>
-                          <span style={{ color: Number(t.profit_loss) >= 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
-                            {Number(t.profit_loss) >= 0 ? '+' : ''}{Number(t.profit_loss || 0).toFixed(2)}
+                          <span style={{ color: Number(tr.profit_loss) >= 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                            {Number(tr.profit_loss) >= 0 ? '+' : ''}{Number(tr.profit_loss || 0).toFixed(2)}
                           </span>
                         </td>
                         <td style={{ ...tdStyle }}>
-                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', background: t.status === 'open' ? 'rgba(34,197,94,0.15)' : 'rgba(107,114,128,0.15)', color: t.status === 'open' ? '#22c55e' : '#6b7280' }}>{t.status}</span>
+                          <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', background: tr.status === 'open' ? 'rgba(34,197,94,0.15)' : 'rgba(107,114,128,0.15)', color: tr.status === 'open' ? '#22c55e' : '#6b7280' }}>{tr.status}</span>
                         </td>
                       </tr>
                     ))}
@@ -384,19 +386,19 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
 
           {!tabLoading && activeTab === 'clients' && (
             <div>
-              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>CLIENTS & LEADS</h2>
+              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.clients.toUpperCase()}</h2>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                   <thead>
                     <tr>
-                      {['NAME', 'EMAIL', 'BALANCE', 'COUNTRY', 'STATUS', 'JOINED', 'ACTIONS'].map(h => (
-                        <th key={h} style={thStyle}>{h}</th>
+                      {[t.name, t.email, t.balance, t.country, t.status, t.joined, t.actions].map((h, i) => (
+                        <th key={i} style={thStyle}>{h.toUpperCase()}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {clients.length === 0 ? (
-                      <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>No assigned clients yet.</td></tr>
+                      <tr><td colSpan={7} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>{t.no_clients_assigned}</td></tr>
                     ) : clients.map((c: any) => (
                       <tr key={c.id} style={{ borderBottom: '1px solid #111' }}>
                         <td style={{ ...tdStyle, color: '#fff', fontWeight: 600 }}>{c.full_name || '—'}</td>
@@ -407,9 +409,9 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                         <td style={{ ...tdStyle, color: '#9ca3af' }}>{c.country || '—'}</td>
                         <td style={{ ...tdStyle }}>
                           {c.is_active ? (
-                            <span style={{ padding: '3px 10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>ACTIVE</span>
+                            <span style={{ padding: '3px 10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{t.active_status}</span>
                           ) : (
-                            <span style={{ padding: '3px 10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>INACTIVE</span>
+                            <span style={{ padding: '3px 10px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>{t.inactive_status}</span>
                           )}
                         </td>
                         <td style={{ ...tdStyle, color: '#6b7280', whiteSpace: 'nowrap' }}>{new Date(c.created_at).toLocaleDateString()}</td>
@@ -418,7 +420,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                             onClick={() => router.push(`/sub-admin/${slug}/client/${c.id}`)}
                             style={{ padding: '5px 14px', background: 'transparent', border: '1px solid rgba(255,215,0,0.5)', borderRadius: 4, color: '#FFD700', fontSize: 10, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}
                           >
-                            MANAGE →
+                            {t.manage_action}
                           </button>
                         </td>
                       </tr>
@@ -435,40 +437,40 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
               {convertLead && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setConvertLead(null); setConvertPassword('') }}>
                   <div style={{ background: '#0f0f0f', border: '1px solid #22c55e', borderRadius: 14, padding: 32, width: 420, maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
-                    <h3 style={{ color: '#22c55e', fontSize: 16, fontWeight: 700, margin: '0 0 8px' }}>CONVERT TO TRADER</h3>
+                    <h3 style={{ color: '#22c55e', fontSize: 16, fontWeight: 700, margin: '0 0 8px' }}>{t.convert_to_trader}</h3>
                     <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 20px' }}>
                       Converting <strong style={{ color: '#fff' }}>{convertLead.full_name}</strong> ({convertLead.email}) to a funded trader account.
                     </p>
                     <div style={{ marginBottom: 16 }}>
-                      <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 8 }}>SET PASSWORD FOR TRADER ACCOUNT</label>
+                      <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 8 }}>{t.set_trader_password}</label>
                       <input type="password" value={convertPassword} onChange={e => setConvertPassword(e.target.value)}
                         placeholder="Min. 8 characters"
                         style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none', fontSize: 14 }} />
                     </div>
                     <div style={{ display: 'flex', gap: 10 }}>
-                      <button onClick={() => { setConvertLead(null); setConvertPassword('') }} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #333', color: '#9ca3af', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                      <button onClick={() => { setConvertLead(null); setConvertPassword('') }} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #333', color: '#9ca3af', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>{t.cancel}</button>
                       <button onClick={handleConvert} disabled={converting || convertPassword.length < 8}
                         style={{ flex: 1, padding: '11px', background: converting || convertPassword.length < 8 ? 'rgba(34,197,94,0.3)' : '#22c55e', border: 'none', color: '#000', borderRadius: 8, cursor: converting || convertPassword.length < 8 ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14 }}>
-                        {converting ? 'Converting...' : '✓ Convert'}
+                        {converting ? t.converting : t.convert_confirm}
                       </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>MY LEADS</h2>
+              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.my_leads}</h2>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
                   <thead>
                     <tr>
-                      {['NAME', 'EMAIL', 'PHONE', 'COUNTRY', 'STATUS', 'NOTES', 'UPDATED', 'ACTIONS'].map(h => (
-                        <th key={h} style={thStyle}>{h}</th>
+                      {[t.name, t.email, t.phone, t.country, t.status, t.notes, t.updated, t.actions].map((h, i) => (
+                        <th key={i} style={thStyle}>{h.toUpperCase()}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {leads.length === 0 ? (
-                      <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>No leads assigned to you yet.</td></tr>
+                      <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: '#4b5563' }}>{t.no_leads_assigned}</td></tr>
                     ) : leads.map((lead: any) => {
                       const s = STATUS_STYLE[lead.status] || STATUS_STYLE['Cold']
                       return (
@@ -480,9 +482,9 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                           <td style={{ ...tdStyle }}>
                             {lead.converted_to_trader_id ? (
                               lead.trader_active ? (
-                                <span style={{ padding: '3px 10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>ACTIVE</span>
+                                <span style={{ padding: '3px 10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{t.active_status}</span>
                               ) : (
-                                <span style={{ padding: '3px 10px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>PENDING ACTIVATION</span>
+                                <span style={{ padding: '3px 10px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{t.pending_activation}</span>
                               )
                             ) : (
                               <select
@@ -500,13 +502,13 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                           <td style={{ ...tdStyle, color: '#6b7280', whiteSpace: 'nowrap' }}>{lead.updated_at ? new Date(lead.updated_at).toLocaleDateString() : '—'}</td>
                           <td style={{ ...tdStyle }}>
                             {lead.converted_to_trader_id ? (
-                              <span style={{ padding: '3px 10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>✓ CONVERTED</span>
+                              <span style={{ padding: '3px 10px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22c55e', borderRadius: 20, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{t.converted_status}</span>
                             ) : lead.email ? (
                               <button
                                 onClick={() => { setConvertLead(lead); setConvertPassword('') }}
                                 style={{ padding: '5px 12px', background: 'transparent', border: '1px solid #22c55e', color: '#22c55e', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                               >
-                                Convert →
+                                {t.convert_action}
                               </button>
                             ) : null}
                           </td>
@@ -521,7 +523,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
 
           {!tabLoading && activeTab === 'profile' && (
             <div style={{ maxWidth: 560 }}>
-              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>MY PROFILE</h2>
+              <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.my_profile}</h2>
 
               {profileSuccess && (
                 <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', padding: '10px 14px', borderRadius: 6, marginBottom: 16, fontSize: 13 }}>
@@ -536,10 +538,10 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
 
               {/* Profile Information */}
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,215,0,0.15)', borderRadius: 12, padding: 24, marginBottom: 20 }}>
-                <h3 style={{ color: '#FFD700', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>PROFILE INFORMATION</h3>
+                <h3 style={{ color: '#FFD700', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.profile_information}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>FULL NAME</label>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>{t.full_name.toUpperCase()}</label>
                     <input
                       style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
                       value={profileForm.full_name}
@@ -547,16 +549,16 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>EMAIL ADDRESS</label>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>{t.email_address}</label>
                     <input
                       style={{ width: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)', color: '#555', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none', cursor: 'not-allowed' }}
                       value={salesUser?.email || ''}
                       disabled
                     />
-                    <div style={{ color: '#555', fontSize: 11, marginTop: 4 }}>Email cannot be changed</div>
+                    <div style={{ color: '#555', fontSize: 11, marginTop: 4 }}>{t.email_cannot_change}</div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>PHONE NUMBER</label>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>{t.phone_number.toUpperCase()}</label>
                     <input
                       type="tel"
                       style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
@@ -565,7 +567,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>COUNTRY</label>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>{t.country.toUpperCase()}</label>
                     <input
                       style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
                       value={profileForm.country}
@@ -577,17 +579,17 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                     disabled={profileSaving}
                     style={{ background: profileSaving ? '#555' : '#FFD700', color: '#000', border: 'none', borderRadius: 6, padding: '12px', fontSize: 13, fontWeight: 700, cursor: profileSaving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em' }}
                   >
-                    {profileSaving ? 'SAVING…' : 'SAVE CHANGES'}
+                    {profileSaving ? t.saving : t.save_changes}
                   </button>
                 </div>
               </div>
 
               {/* Change Password */}
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,215,0,0.15)', borderRadius: 12, padding: 24, marginBottom: 20 }}>
-                <h3 style={{ color: '#FFD700', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>CHANGE PASSWORD</h3>
+                <h3 style={{ color: '#FFD700', fontSize: 13, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.change_password}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>NEW PASSWORD</label>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>{t.new_password.toUpperCase()}</label>
                     <input
                       type="password"
                       style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
@@ -596,7 +598,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>CONFIRM NEW PASSWORD</label>
+                    <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6, letterSpacing: '0.05em' }}>{t.confirm_new_password}</label>
                     <input
                       type="password"
                       style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, fontSize: 14, outline: 'none' }}
@@ -609,7 +611,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
                     disabled={profileSaving}
                     style={{ background: profileSaving ? '#555' : '#FFD700', color: '#000', border: 'none', borderRadius: 6, padding: '12px', fontSize: 13, fontWeight: 700, cursor: profileSaving ? 'not-allowed' : 'pointer', letterSpacing: '0.05em' }}
                   >
-                    {profileSaving ? 'UPDATING…' : 'UPDATE PASSWORD'}
+                    {profileSaving ? t.updating : t.update_password}
                   </button>
                 </div>
               </div>

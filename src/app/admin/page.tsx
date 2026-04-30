@@ -443,11 +443,11 @@ export default function SuperAdminDashboard() {
         }}>
           {[
             { id: 'tenants', icon: Building2, label: t.leasing_companies },
-            { id: 'system', icon: Database, label: 'Global Architecture' },
-            { id: 'financial', icon: DollarSign, label: 'Subscription Payments' },
-            { id: 'packages', icon: Settings2, label: 'Package Settings' },
+            { id: 'system', icon: Database, label: t.global_architecture },
+            { id: 'financial', icon: DollarSign, label: t.subscription_payments },
+            { id: 'packages', icon: Settings2, label: t.package_settings },
             { id: 'payment-settings', icon: Settings, label: t.payment_settings },
-            { id: 'audit', icon: ShieldCheck, label: 'Security & Audit Logs' },
+            { id: 'audit', icon: ShieldCheck, label: t.security_audit_logs },
           ].map(item => {
             const Icon = item.icon
             const isActive = activeTab === item.id
@@ -503,7 +503,7 @@ export default function SuperAdminDashboard() {
             {activeTab === 'tenants' && (
               <div className="crm-section fade-in">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#FFD700', letterSpacing: '0.05em', margin: 0 }}>TENANT MANAGEMENT BOARD</h2>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, color: '#FFD700', letterSpacing: '0.05em', margin: 0 }}>{t.tenant_management_board}</h2>
                   <div style={{ display: 'flex', gap: 12 }}>
 
 
@@ -525,10 +525,10 @@ export default function SuperAdminDashboard() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead style={{ background: 'rgba(0,0,0,0.3)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                       <tr>
-                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>COMPANY NAME</th>
+                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>{t.company_name_col}</th>
                         <th style={{ padding: '14px 20px', fontWeight: 600 }}>{t.email_address}</th>
                         <th style={{ padding: '14px 20px', fontWeight: 600 }}>{t.total_clients}</th>
-                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>MARKETS</th>
+                        <th style={{ padding: '14px 20px', fontWeight: 600 }}>{t.markets_col}</th>
                         <th style={{ padding: '14px 20px', fontWeight: 600 }}>{t.package}</th>
                         <th style={{ padding: '14px 20px', fontWeight: 600, textAlign: 'right' }}>{t.actions}</th>
                       </tr>
@@ -694,7 +694,7 @@ export default function SuperAdminDashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>COMPANY NAME</label>
+                  <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>{t.company_name_col}</label>
                   <input value={formData.company} onChange={e => {
                     const name = e.target.value
                     const slug = name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim()
