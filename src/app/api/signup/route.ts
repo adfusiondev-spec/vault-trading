@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { encryptPassword } from '@/lib/crypto'
+import { sendNewTenantAlert } from '@/lib/email'
 
 function slugify(name: string): string {
   return name
@@ -100,6 +101,9 @@ export async function POST(request: NextRequest) {
     if (profileError) {
       return NextResponse.json({ error: 'Failed to configure account. Please contact support.' }, { status: 500 })
     }
+
+    // Notify super_admin (fire-and-forget — non-fatal)
+    sendNewTenantAlert(full_name || company_name, email, slug).catch(console.error)
 
     // 5. Stub subscription_payments record (non-fatal)
     await adminClient.from('subscription_payments').insert({

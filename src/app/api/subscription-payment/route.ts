@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { sendSubscriptionPaymentAlert } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -69,6 +70,20 @@ export async function POST(request: NextRequest) {
   }])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Notify super_admin (fire-and-forget — non-fatal)
+  const { data: subAdminProfile } = await service
+    .from('profiles')
+    .select('email')
+    .eq('id', sub_admin_id)
+    .single()
+
+  sendSubscriptionPaymentAlert(
+    subAdminProfile?.email ?? sub_admin_id,
+    package_name,
+    amount,
+    method
+  ).catch(console.error)
 
   return NextResponse.json({ success: true })
 }
