@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { encryptPassword } from '@/lib/crypto'
 
 export async function POST(request: Request) {
   try {
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
         assigned_to: subAdmin.id,
         phone_number: phone_number || null,
         country: country || null,
+        encrypted_password: encryptPassword(password),
       })
       .eq('id', authData.user.id)
 

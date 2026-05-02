@@ -253,9 +253,13 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
       setProfileError(t.password_too_short); return
     }
     setProfileSaving(true); setProfileError(''); setProfileSuccess('')
-    const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({ password: passwordForm.new_password })
-    if (error) setProfileError(error.message)
+    const res = await fetch('/api/update-own-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: passwordForm.new_password }),
+    })
+    const data = await res.json()
+    if (!res.ok) setProfileError(data.error || t.password_too_short)
     else {
       setProfileSuccess(t.password_changed)
       setPasswordForm({ new_password: '', confirm_password: '' })

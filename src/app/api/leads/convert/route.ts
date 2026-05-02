@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { encryptPassword } from '@/lib/crypto'
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
       country: lead.country,
       is_active: false,
       lead_status: 'Inactive',
+      encrypted_password: encryptPassword(password),
     }).eq('id', newUser.user.id)
 
     await adminSupa.from('leads').update({

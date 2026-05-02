@@ -208,7 +208,7 @@ export default function Dashboard() {
 
   const [symbol, setSymbol] = useState('BTCUSDT')
   const [tradeAmt, setTradeAmt] = useState('')
-  const [bottomTab, setBottomTab] = useState('statements')
+  const [bottomTab, setBottomTab] = useState('open')
   
   const [showNotifications, setShowNotifications] = useState(false)
   
@@ -278,8 +278,13 @@ export default function Dashboard() {
   const handleSavePassword = async () => {
     if (newPw !== confirmPw) return alert('Passwords do not match')
     if (newPw.length < 6) return alert('Password must be at least 6 characters')
-    const { error } = await supabase.auth.updateUser({ password: newPw })
-    if (error) alert(error.message)
+    const res = await fetch('/api/update-own-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: newPw }),
+    })
+    const data = await res.json()
+    if (!res.ok) alert(data.error || 'Failed to update password')
     else {
       alert('Password updated successfully')
       setCurrentPw(''); setNewPw(''); setConfirmPw('')
