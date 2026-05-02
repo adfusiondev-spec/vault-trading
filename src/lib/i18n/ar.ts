@@ -247,6 +247,7 @@ export const ar: Record<TranslationKey, string> = {
   bank_name_label: 'اسم البنك',
   account_holder: 'صاحب الحساب',
   rib_iban: 'رقم الحساب / IBAN',
+  swift_bic_code: 'رمز SWIFT / BIC',
   active_toggle: 'نشط',
   loading_payment_settings: 'جاري تحميل إعدادات الدفع...',
   save_payment_settings: 'حفظ إعدادات الدفع',

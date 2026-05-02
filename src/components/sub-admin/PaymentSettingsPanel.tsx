@@ -11,6 +11,7 @@ interface PaymentSettings {
   bank_name: string
   bank_account_holder: string
   bank_rib: string
+  bank_swift: string
   bank_is_active: boolean
 }
 
@@ -23,6 +24,7 @@ const defaultSettings: PaymentSettings = {
   bank_name: '',
   bank_account_holder: '',
   bank_rib: '',
+  bank_swift: '',
   bank_is_active: true,
 }
 
@@ -237,6 +239,17 @@ export default function SubAdminPaymentSettingsPanel({ isTrial = false }: { isTr
               placeholder="007 XXX XXXXXXXXXX XX"
               value={settings.bank_rib}
               onChange={e => update('bank_rib', e.target.value)}
+              disabled={isTrial}
+              style={{ ...inputStyle, fontFamily: 'monospace' }}
+            />
+          </div>
+          <div style={{ marginTop: '12px' }}>
+            <label style={labelStyle}>{t.swift_bic_code}</label>
+            <input
+              type="text"
+              placeholder="AAAABBCCXXX"
+              value={settings.bank_swift}
+              onChange={e => update('bank_swift', e.target.value)}
               disabled={isTrial}
               style={{ ...inputStyle, fontFamily: 'monospace' }}
             />

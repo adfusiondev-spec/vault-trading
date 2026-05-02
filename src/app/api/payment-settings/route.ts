@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       bank_name: body.bank_name ?? null,
       bank_account_holder: body.bank_account_holder ?? null,
       bank_rib: body.bank_rib ?? null,
+      bank_swift: body.bank_swift ?? null,
       bank_is_active: body.bank_is_active ?? true,
     }, { onConflict: 'sub_admin_id' })
 

@@ -245,6 +245,7 @@ export const en = {
   bank_name_label: 'Bank Name',
   account_holder: 'Account Holder',
   rib_iban: 'RIB / IBAN',
+  swift_bic_code: 'SWIFT / BIC Code',
   active_toggle: 'Active',
   loading_payment_settings: 'Loading payment settings...',
   save_payment_settings: 'Save Payment Settings',

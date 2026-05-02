@@ -206,7 +206,7 @@ export default function SignupPage() {
 
             {/* Row 3 — Left: Phone Number */}
             <div>
-              <label style={labelStyle}>{t.phone_number.toUpperCase()}</label>
+              <label style={labelStyle}>{t.phone_number.toUpperCase()} *</label>
               <input
                 type="tel"
                 value={form.phone_number}
@@ -221,7 +221,7 @@ export default function SignupPage() {
 
             {/* Row 3 — Right: Country */}
             <div>
-              <label style={labelStyle}>{t.country.toUpperCase()}</label>
+              <label style={labelStyle}>{t.country.toUpperCase()} *</label>
               <select
                 value={form.country}
                 onChange={set('country')}

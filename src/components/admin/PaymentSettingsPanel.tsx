@@ -16,6 +16,7 @@ export default function PaymentSettingsPanel() {
     bank_name: '',
     bank_account_holder: '',
     bank_rib: '',
+    bank_swift: '',
     bank_is_active: true,
   })
 
@@ -178,6 +179,16 @@ export default function PaymentSettingsPanel() {
               value={settings.bank_rib}
               onChange={e => setSettings(p => ({ ...p, bank_rib: e.target.value }))}
               placeholder="007 XXX XXXXXXXXXX XX"
+              style={{ ...inputStyle, fontFamily: 'monospace' }}
+            />
+          </div>
+          <div style={{ marginTop: '12px' }}>
+            <label style={labelStyle}>{t.swift_bic_code}</label>
+            <input
+              type="text"
+              value={settings.bank_swift}
+              onChange={e => setSettings(p => ({ ...p, bank_swift: e.target.value }))}
+              placeholder="AAAABBCCXXX"
               style={{ ...inputStyle, fontFamily: 'monospace' }}
             />
           </div>

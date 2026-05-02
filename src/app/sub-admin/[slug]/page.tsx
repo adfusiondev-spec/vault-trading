@@ -1,5 +1,12 @@
 'use client'
 
+const COUNTRIES = [
+  'Saudi Arabia', 'United Arab Emirates', 'Kuwait', 'Qatar', 'Bahrain', 'Oman',
+  'Egypt', 'Jordan', 'Lebanon', 'Iraq', 'Morocco', 'Tunisia', 'Algeria', 'Libya',
+  'United States', 'United Kingdom', 'Germany', 'France', 'Canada', 'Australia',
+  'Turkey', 'Pakistan', 'India', 'Other',
+]
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, Activity, DollarSign, LogOut, ShieldCheck, Check, X, Bell, Eye, EyeOff, Settings, CreditCard, ArrowDownCircle, ArrowUpCircle, UserCheck, Target, Copy, Power } from 'lucide-react'
@@ -246,7 +253,6 @@ function SalesTeamPanel({ subAdminId, companySlug }: { subAdminId: string; compa
                 { key: 'email', label: 'Email *', type: 'email', required: true },
                 { key: 'password', label: 'Password *', type: 'password', required: true },
                 { key: 'phone_number', label: 'Phone', type: 'text', required: false },
-                { key: 'country', label: 'Country', type: 'text', required: false },
               ].map(f => (
                 <div key={f.key}>
                   <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>{f.label.toUpperCase()}</label>
@@ -259,6 +265,17 @@ function SalesTeamPanel({ subAdminId, companySlug }: { subAdminId: string; compa
                   />
                 </div>
               ))}
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>COUNTRY</label>
+                <select
+                  value={addForm.country}
+                  onChange={e => setAddForm({ ...addForm, country: e.target.value })}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: addForm.country ? '#fff' : '#6b7280', padding: '10px 14px', borderRadius: 6, outline: 'none', fontSize: 14 }}
+                >
+                  <option value="" style={{ background: '#0f0f0f', color: '#6b7280' }}>Select country</option>
+                  {COUNTRIES.map(c => <option key={c} value={c} style={{ background: '#0f0f0f', color: '#fff' }}>{c}</option>)}
+                </select>
+              </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                 <button type="button" onClick={() => setIsAddModalOpen(false)} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #333', color: '#9ca3af', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
                 <button type="submit" disabled={addLoading} style={{ flex: 1, padding: '11px', background: '#FFD700', border: 'none', color: '#000', borderRadius: 8, cursor: addLoading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14 }}>
@@ -660,7 +677,6 @@ function LeadsPanel({ subAdminId }: { subAdminId: string }) {
                 { key: 'full_name', label: 'Full Name *', type: 'text', required: true },
                 { key: 'email', label: 'Email', type: 'email', required: false },
                 { key: 'phone', label: 'Phone', type: 'text', required: false },
-                { key: 'country', label: 'Country', type: 'text', required: false },
               ].map(f => (
                 <div key={f.key}>
                   <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>{f.label.toUpperCase()}</label>
@@ -668,6 +684,17 @@ function LeadsPanel({ subAdminId }: { subAdminId: string }) {
                     onChange={e => setAddForm({ ...addForm, [f.key]: e.target.value })} style={inputStyle} />
                 </div>
               ))}
+              <div>
+                <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>COUNTRY</label>
+                <select
+                  value={addForm.country}
+                  onChange={e => setAddForm({ ...addForm, country: e.target.value })}
+                  style={{ ...inputStyle, color: addForm.country ? '#fff' : '#6b7280', background: '#0f0f0f' }}
+                >
+                  <option value="" style={{ background: '#0f0f0f', color: '#6b7280' }}>Select country</option>
+                  {COUNTRIES.map(c => <option key={c} value={c} style={{ background: '#0f0f0f', color: '#fff' }}>{c}</option>)}
+                </select>
+              </div>
               <div>
                 <label style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 6 }}>STATUS</label>
                 <select value={addForm.status} onChange={e => setAddForm({ ...addForm, status: e.target.value })}
@@ -2193,11 +2220,14 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>COUNTRY</label>
-                  <input 
+                  <select
                     value={traderForm.country}
                     onChange={e => setTraderForm({...traderForm, country: e.target.value})}
-                    style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff' }} 
-                  />
+                    style={{ width: '100%', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: traderForm.country ? '#fff' : '#6b7280', outline: 'none' }}
+                  >
+                    <option value="" disabled style={{ background: '#0b0e11', color: '#6b7280' }}>Select country</option>
+                    {COUNTRIES.map(c => <option key={c} value={c} style={{ background: '#0b0e11', color: '#fff' }}>{c}</option>)}
+                  </select>
                 </div>
               </div>
 

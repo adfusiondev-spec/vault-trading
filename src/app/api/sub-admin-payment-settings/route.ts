@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const {
       usdt_address, usdt_network, usdt_is_active,
       btc_address, btc_is_active,
-      bank_name, bank_account_holder, bank_rib, bank_is_active,
+      bank_name, bank_account_holder, bank_rib, bank_swift, bank_is_active,
     } = body
 
     const adminClient = createClient(
@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
         bank_name: bank_name ?? null,
         bank_account_holder: bank_account_holder ?? null,
         bank_rib: bank_rib ?? null,
+        bank_swift: bank_swift ?? null,
         bank_is_active: bank_is_active ?? true,
       }, { onConflict: 'sub_admin_id' })
 
