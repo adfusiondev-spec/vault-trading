@@ -19,7 +19,7 @@ import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import SubAdminPaymentSettingsPanel from '@/components/sub-admin/PaymentSettingsPanel'
 import { isTrialExpired, isTrial } from '@/lib/trial'
-import { calculateMonthlyPrice } from '@/lib/pricing'
+import { calculateMonthlyPrice, PricingConfig } from '@/lib/pricing'
 
 // Mock Data
 const INITIAL_TRADES: any[] = []
@@ -876,6 +876,19 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   const { prices } = useMarketData()
 
 
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig>({ base: 300, globalAddon: 100, saudiAddon: 300 })
+
+  useEffect(() => {
+    fetch('/api/pricing-config')
+      .then(r => r.json())
+      .then(d => {
+        if (d.base_price !== undefined) {
+          setPricingConfig({ base: d.base_price, globalAddon: d.global_indices_addon, saudiAddon: d.saudi_indices_addon })
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const [mounted, setMounted] = useState(false)
   const [activeTab, setActiveTab] = useState<'monitor' | 'leads' | 'deposits' | 'withdrawals' | 'subscription' | 'payment-settings' | 'sales-team' | 'leads-panel'>('monitor')
   const [showSubscriptionOverride, setShowSubscriptionOverride] = useState(false)
@@ -942,7 +955,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
     const mktKeys = selectedMarkets.map(m =>
       m === 'Global Indices' ? 'global_indices' : m === 'Saudi Indices' ? 'saudi_indices' : m.toLowerCase()
     )
-    const { monthly } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard')
+    const { monthly } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard', pricingConfig)
     setPaymentAmount(monthly.toFixed(2))
   }, [billingCycle, selectedMarkets, trialOption])
 
@@ -1189,7 +1202,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
       const mktKeys = selectedMarkets.map(m =>
         m === 'Global Indices' ? 'global_indices' : m === 'Saudi Indices' ? 'saudi_indices' : m.toLowerCase()
       )
-      const { monthly: fullPrice } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard')
+      const { monthly: fullPrice } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard', pricingConfig)
       const trialDays = TRIAL_OPTIONS.find(t => t.value === trialOption)?.days ?? 0
 
       const fd = new FormData()
@@ -2307,7 +2320,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                   m === 'Global Indices' ? 'global_indices' : m === 'Saudi Indices' ? 'saudi_indices' : m.toLowerCase()
                 )
                 const billingKey = billingCycle === 'yearly' ? 'annual' : 'monthly'
-                const pricing = calculateMonthlyPrice(mktKeys, billingKey, trialOption !== 'none' ? 'Trial' : 'Standard')
+                const pricing = calculateMonthlyPrice(mktKeys, billingKey, trialOption !== 'none' ? 'Trial' : 'Standard', pricingConfig)
                 return (
                   <div style={{ padding: '14px 18px', background: 'rgba(255,215,0,0.04)', borderRadius: 8, border: '1px solid rgba(255,215,0,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ color: '#8a8e9b', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em' }}>ESTIMATED COST</span>
@@ -2464,7 +2477,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                       const mktKeys = selectedMarkets.map(m =>
                         m === 'Global Indices' ? 'global_indices' : m === 'Saudi Indices' ? 'saudi_indices' : m.toLowerCase()
                       )
-                      const { monthly } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard')
+                      const { monthly } = calculateMonthlyPrice(mktKeys, billingCycle === 'yearly' ? 'annual' : 'monthly', 'Standard', pricingConfig)
                       return monthly
                     })()}/{billingCycle === 'monthly' ? 'mo' : 'yr'}
                   </div>

@@ -12,7 +12,7 @@ import PaymentSettingsPanel from '@/components/admin/PaymentSettingsPanel'
 import { PackageSettings } from '@/components/admin/PackageSettings'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { calculateMonthlyPrice } from '@/lib/pricing'
+import { calculateMonthlyPrice, PricingConfig } from '@/lib/pricing'
 
 
 
@@ -76,10 +76,23 @@ export default function SuperAdminDashboard() {
 
   const ASSET_CLASSES = ['Crypto', 'Forex', 'Commodities', 'Global Indices', 'Saudi Indices'] as const
 
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig>({ base: 300, globalAddon: 100, saudiAddon: 300 })
+
+  useEffect(() => {
+    fetch('/api/pricing-config')
+      .then(r => r.json())
+      .then(d => {
+        if (d.base_price !== undefined) {
+          setPricingConfig({ base: d.base_price, globalAddon: d.global_indices_addon, saudiAddon: d.saudi_indices_addon })
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     setMounted(true)
     const supabase = createClient()
-    
+
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
@@ -276,7 +289,7 @@ export default function SuperAdminDashboard() {
         if (m === 'Saudi Indices') return 'saudi_indices'
         return m.toLowerCase()
       })
-      const { monthly: subPrice } = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any)
+      const { monthly: subPrice } = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any, pricingConfig)
       const editUpdate: any = {
         full_name: formData.company,
         company_slug: formData.slug,
@@ -332,7 +345,7 @@ export default function SuperAdminDashboard() {
           if (m === 'Saudi Indices') return 'saudi_indices'
           return m.toLowerCase()
         })
-        const { monthly: subPrice2 } = calculateMonthlyPrice(mktKeys2, billingKey2, pkgType2 as any)
+        const { monthly: subPrice2 } = calculateMonthlyPrice(mktKeys2, billingKey2, pkgType2 as any, pricingConfig)
         await (supabase.from('profiles') as any).update({
           subscription_package: formData.subscriptionPackage,
           market_access: formData.market_access,
@@ -801,7 +814,7 @@ export default function SuperAdminDashboard() {
                   if (m === 'Saudi Indices') return 'saudi_indices'
                   return m.toLowerCase()
                 })
-                const pricing = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any)
+                const pricing = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any, pricingConfig)
                 return (
                   <div style={{
                     padding: '14px 18px', background: 'rgba(255,215,0,0.04)',

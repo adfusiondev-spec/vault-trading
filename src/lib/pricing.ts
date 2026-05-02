@@ -31,18 +31,27 @@ export const MARKET_OPTIONS = [
 export const BASE_PRICE = 300
 export const MAX_PRICE = 700
 
+export type PricingConfig = {
+  base: number
+  globalAddon: number
+  saudiAddon: number
+}
+
+const DEFAULT_CONFIG: PricingConfig = { base: BASE_PRICE, globalAddon: 100, saudiAddon: 300 }
+
 export function calculateMonthlyPrice(
   selectedMarkets: string[],
   billingCycle: 'monthly' | 'annual',
-  packageType: 'Trial' | 'Standard' | 'VIP'
+  packageType: 'Trial' | 'Standard' | 'VIP',
+  config: PricingConfig = DEFAULT_CONFIG
 ): { monthly: number; total: number; discount: number; label: string } {
   if (packageType === 'Trial') {
     return { monthly: 0, total: 0, discount: 0, label: 'Free Trial' }
   }
 
-  let price = BASE_PRICE
-  if (selectedMarkets.includes('global_indices')) price += 100
-  if (selectedMarkets.includes('saudi_indices')) price += 300
+  let price = config.base
+  if (selectedMarkets.includes('global_indices')) price += config.globalAddon
+  if (selectedMarkets.includes('saudi_indices')) price += config.saudiAddon
   price = Math.min(price, MAX_PRICE)
 
   const monthly = price
