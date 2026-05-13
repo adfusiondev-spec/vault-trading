@@ -291,10 +291,10 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
   ]
 
   return (
-    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: '#050505', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff' }}>
+    <div className="nk-dashboard-shell" style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', background: '#050505', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff' }}>
 
       {/* Header */}
-      <div style={{ background: '#0a0a0a', borderBottom: '1px solid #1a1a1a', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div className="nk-dashboard-header" style={{ background: '#0a0a0a', borderBottom: '1px solid #1a1a1a', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: '#FFD700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ShieldCheck size={20} strokeWidth={2.5} color="#000" />
@@ -313,10 +313,10 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div className="nk-dashboard-body" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
         {/* Sidebar */}
-        <div style={{ width: 220, flexShrink: 0, background: '#0a0a0a', borderRight: '1px solid #1a1a1a', display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px' }}>
+        <div className="nk-sales-sidebar" style={{ width: 220, flexShrink: 0, background: '#0a0a0a', borderRight: '1px solid #1a1a1a', display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px' }}>
           {tabs.map(tab => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -351,7 +351,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
           {!tabLoading && activeTab === 'monitor' && (
             <div>
               <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.trade_monitor.toUpperCase()}</h2>
-              <div style={{ overflowX: 'auto' }}>
+              <div className="nk-table-scroll-x" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                   <thead>
                     <tr>
@@ -391,7 +391,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
           {!tabLoading && activeTab === 'clients' && (
             <div>
               <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.clients.toUpperCase()}</h2>
-              <div style={{ overflowX: 'auto' }}>
+              <div className="nk-table-scroll-x" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
                   <thead>
                     <tr>
@@ -440,7 +440,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
               {/* Convert to Trader Modal */}
               {convertLead && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setConvertLead(null); setConvertPassword('') }}>
-                  <div style={{ background: '#0f0f0f', border: '1px solid #22c55e', borderRadius: 14, padding: 32, width: 420, maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
+                  <div className="nk-modal-inner" style={{ background: '#0f0f0f', border: '1px solid #22c55e', borderRadius: 14, padding: 32, width: 420, maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
                     <h3 style={{ color: '#22c55e', fontSize: 16, fontWeight: 700, margin: '0 0 8px' }}>{t.convert_to_trader}</h3>
                     <p style={{ color: '#6b7280', fontSize: 13, margin: '0 0 20px' }}>
                       Converting <strong style={{ color: '#fff' }}>{convertLead.full_name}</strong> ({convertLead.email}) to a funded trader account.
@@ -463,7 +463,7 @@ export default function SalesDashboard({ params }: { params: Promise<{ slug: str
               )}
 
               <h2 style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: '0.05em', marginBottom: 20 }}>{t.my_leads}</h2>
-              <div style={{ overflowX: 'auto' }}>
+              <div className="nk-table-scroll-x" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
                   <thead>
                     <tr>

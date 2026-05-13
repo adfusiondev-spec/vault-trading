@@ -344,4 +344,25 @@
   .nk-user-summary-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+
+  /* ── Sales sidebar → horizontal scrollable tab row ── */
+  .nk-sales-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,215,0,0.1) !important;
+    padding: 6px 4px !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Override width:100% on sidebar buttons so they render as natural-width chips */
+  .nk-sales-sidebar button {
+    width: auto !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
 }
