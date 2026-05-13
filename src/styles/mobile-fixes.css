@@ -223,9 +223,81 @@
     flex-shrink: 0 !important;
   }
 
-  /* ── User: hide watchlist on mobile ── */
+  /* ── User: watchlist → horizontal scrollable asset ribbon ── */
   .nk-user-watchlist {
+    display: flex !important;
+    width: 100% !important;
+    height: 52px !important;
+    flex-direction: column !important;
+    flex-shrink: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid #2a2e3b !important;
+    overflow: hidden !important;
+  }
+
+  /* Hide search header + column headers — unnecessary in ribbon layout */
+  .nk-user-watchlist > div:first-child,
+  .nk-user-watchlist > div:nth-child(2) {
     display: none !important;
+  }
+
+  /* Inner list → horizontal scrolling row */
+  .nk-user-watchlist .scroll-hide {
+    flex: none !important;
+    width: 100% !important;
+    height: 52px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    align-items: stretch !important;
+  }
+
+  /* Hide category section labels (divs that contain no child divs) */
+  .nk-user-watchlist .scroll-hide > div:not(:has(div)) {
+    display: none !important;
+  }
+
+  /* Each AssetRow chip: vertical — symbol on top, sell price below */
+  .nk-user-watchlist .scroll-hide > div:has(div) {
+    flex-direction: column !important;
+    flex-shrink: 0 !important;
+    min-width: 72px !important;
+    padding: 6px 10px !important;
+    gap: 3px !important;
+    border-right: 1px solid rgba(42,46,59,0.6) !important;
+    border-left: none !important;
+    justify-content: center !important;
+  }
+
+  /* Symbol name — top line of chip */
+  .nk-user-watchlist .scroll-hide > div:has(div) > div:nth-child(1) {
+    flex: none !important;
+    font-size: 10px !important;
+    text-align: left !important;
+  }
+
+  /* Hide buy price */
+  .nk-user-watchlist .scroll-hide > div:has(div) > div:nth-child(2) {
+    display: none !important;
+  }
+
+  /* Sell price — bottom line of chip */
+  .nk-user-watchlist .scroll-hide > div:has(div) > div:nth-child(3) {
+    flex: none !important;
+    font-size: 10px !important;
+    text-align: left !important;
+    font-family: monospace !important;
+  }
+
+  /* Hide spread */
+  .nk-user-watchlist .scroll-hide > div:has(div) > div:nth-child(4) {
+    display: none !important;
+  }
+
+  /* Chart container: prevent collapse when body is height:auto */
+  .nk-user-main > div:nth-child(2) {
+    min-height: 300px !important;
   }
 
   /* ── User: main content takes full width ── */
