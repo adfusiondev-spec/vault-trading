@@ -375,13 +375,13 @@ const [savingProfile, setSavingProfile] = useState(false)
   const displayEmail = clientEmail || (clientIdStr.includes('@') ? clientIdStr : `${clientIdStr.substring(0, 8)}...`)
 
   return (
-    <div style={{
+    <div className="nk-dashboard-shell" style={{
       height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
       background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'hidden'
     }}>
       
       {/* ── Top Header ── */}
-      <div style={{
+      <div className="nk-dashboard-header" style={{
         height: 70, flexShrink: 0, borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 24px', background: 'rgba(11,14,17,0.95)'
@@ -418,13 +418,13 @@ const [savingProfile, setSavingProfile] = useState(false)
         </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+      <div className="nk-dashboard-body" style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
         
         {/* ── Center: Admin Execution Terminal ── */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#06080a', overflowY: 'auto', padding: 30, borderRight: '1px solid var(--border)' }}>
+        <div className="nk-client-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#06080a', overflowY: 'auto', padding: 30, borderRight: '1px solid var(--border)' }}>
 
           {/* Quick Stats Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 30 }}>
+          <div className="nk-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 30 }}>
             {[
               { label: t.total_deposits, value: `$${clientStats.totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#FFD700' },
               { label: t.total_withdrawals, value: `$${clientStats.totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#FFD700' },
@@ -616,7 +616,7 @@ const [savingProfile, setSavingProfile] = useState(false)
         </div>
 
         {/* ── Right: CRM + Edit + Security ── */}
-        <div style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'rgba(11,14,17,0.98)', borderLeft: '1px solid var(--border)', overflowY: 'auto' }}>
+        <div className="nk-client-panel" style={{ width: 360, flexShrink: 0, display: 'flex', flexDirection: 'column', background: 'rgba(11,14,17,0.98)', borderLeft: '1px solid var(--border)', overflowY: 'auto' }}>
           
           {/* Ban Warning Banner */}
           {isBanned && (
