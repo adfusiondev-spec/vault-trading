@@ -444,7 +444,7 @@ const [savingProfile, setSavingProfile] = useState(false)
             </h2>
 
             {/* Execution Bar */}
-            <div style={{ 
+            <div className="nk-exec-bar" style={{
               background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,215,0,0.2)', borderRadius: 12, padding: 24,
               display: 'flex', gap: 20, alignItems: 'flex-end', marginBottom: 40, boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
             }}>
@@ -480,7 +480,7 @@ const [savingProfile, setSavingProfile] = useState(false)
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 12 }}>
+              <div className="nk-exec-buttons" style={{ display: 'flex', gap: 12 }}>
                 <button onClick={() => handleTrade('Buy')} style={{
                   padding: '12px 30px', borderRadius: 6, background: '#26a69a', border: 'none', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', transition: 'all 0.15s', textTransform: 'uppercase'
                 }}>

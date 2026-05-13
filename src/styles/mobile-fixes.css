@@ -382,4 +382,22 @@
     border-top: 1px solid rgba(255,255,255,0.08) !important;
     box-sizing: border-box !important;
   }
+
+  /* ── Client: execution bar → 2-row layout on mobile ── */
+  .nk-exec-bar {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+
+  /* BUY/SELL button group → forced full-width second row */
+  .nk-exec-buttons {
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  /* Each button → 50% of the row, generous touch target */
+  .nk-exec-buttons button {
+    flex: 1 !important;
+    padding: 14px !important;
+  }
 }
