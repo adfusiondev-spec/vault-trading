@@ -1,0 +1,268 @@
+/*
+ * NOKHBA — Mobile Responsiveness (Phase 1: public + auth pages)
+ *
+ * SCOPE: Activates ONLY below 768px viewport width.
+ *        Above 768px this file emits zero rules — desktop stays 100% untouched.
+ *
+ * MECHANISM: Targets additive `nk-*` className hooks added to existing wrappers.
+ *            Inline styles outrank class rules, so each mobile declaration uses
+ *            !important — confined to this single media query.
+ *
+ * Pages covered: /, /login, /register, /signup, /reset-password
+ */
+
+@media (max-width: 768px) {
+
+  /* Release the global overflow:hidden lock from globals.css so pages can scroll */
+  html, body {
+    overflow: auto !important;
+    height: auto !important;
+    min-height: 100% !important;
+  }
+
+  /* Outer page wrapper — release 100vh/100vw, allow vertical flow.
+     Force flex-direction: column so children stack vertically rather than
+     wrapping in the original row layout. */
+  .nk-page-shell {
+    height: auto !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    padding-top: max(16px, env(safe-area-inset-top, 16px)) !important;
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 24px)) !important;
+  }
+
+  /* Auth/landing card — fit viewport with side gutters */
+  .nk-auth-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 24px 20px !important;
+    margin: 24px auto !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Header row (icon + brand + language toggle) — keep stacked, tighten gap */
+  .nk-auth-header {
+    margin-bottom: 24px !important;
+    gap: 8px !important;
+  }
+
+  /* Main title (Nokhba wordmark / page title) — fluid font sizing */
+  .nk-auth-title {
+    font-size: clamp(20px, 6vw, 26px) !important;
+    text-align: center !important;
+  }
+
+  /* Subtitle / tagline */
+  .nk-auth-tagline {
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+    text-align: center !important;
+  }
+
+  /* Primary CTA / submit button — full-width, comfortable touch target */
+  .nk-cta-button {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 14px 20px !important;
+    font-size: 14px !important;
+  }
+
+  /* Absolutely-positioned corner link (landing's "Already a member? Log in")
+     — pull into normal flow so it doesn't overlap the centered content */
+  .nk-corner-link {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    align-self: flex-end !important;
+    width: 100% !important;
+    text-align: right !important;
+    margin: 4px 0 16px !important;
+    font-size: 13px !important;
+    z-index: 20 !important;
+  }
+
+  /* Decorative absolute glow — scale down so it doesn't dominate */
+  .nk-bg-glow {
+    width: 360px !important;
+    height: 360px !important;
+    opacity: 0.5 !important;
+  }
+
+  /* Multi-column form rows — collapse to single column.
+     (Signup also has its own 640px collapse; this 768px rule lays on top
+      and matches the same single-column result.) */
+  .nk-form-row {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Landing center column — release any fixed widths, comfortable padding */
+  .nk-landing-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 32px 8px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Phase 2: Dashboard pages
+   All rules fire only at ≤ 768px.
+   Zero rules emitted on desktop.
+   ═══════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ── Shared: root shell ── */
+  .nk-dashboard-shell {
+    height: auto !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    flex-direction: column !important;
+  }
+
+  /* ── Shared: header bar ── */
+  .nk-dashboard-header {
+    height: auto !important;
+    min-height: 50px !important;
+    padding: 8px 12px !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+    align-items: center !important;
+  }
+
+  /* ── User dashboard: right control bar drops to full-width second row
+       and wraps internally so Deposit/Withdrawal are always reachable ── */
+  .nk-dashboard-header > div:last-child {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  /* ── Shared: body flex row → column ── */
+  .nk-dashboard-body {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* ── Shared: stat card grids → 2-col ── */
+  .nk-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  /* ── Shared: horizontal-scrolling table wrapper ── */
+  .nk-table-scroll-x {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+
+  /* ── Shared: modal inner box ── */
+  .nk-modal-inner {
+    max-width: 90vw !important;
+    width: 90vw !important;
+    padding: 16px !important;
+    margin: 12px auto !important;
+    max-height: 88vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* ── Shared: 2-col modal form grids → 1-col ── */
+  .nk-modal-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ── Shared: notification dropdown — fix off-screen bleed ── */
+  .nk-notif-dropdown {
+    right: 0 !important;
+    left: auto !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  /* ── Admin sidebar → horizontal scrollable tab row ── */
+  .nk-admin-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,215,0,0.1) !important;
+    padding: 6px 4px !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── Sub-admin sidebar → horizontal scrollable tab row ── */
+  .nk-subadmin-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,215,0,0.1) !important;
+    padding: 6px 4px !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── User: hide watchlist on mobile ── */
+  .nk-user-watchlist {
+    display: none !important;
+  }
+
+  /* ── User: main content takes full width ── */
+  .nk-user-main {
+    width: 100% !important;
+    border-right: none !important;
+    min-width: 0 !important;
+  }
+
+  /* ── User: right account panel → stacks below chart ── */
+  .nk-user-panel {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 280px !important;
+    overflow-y: auto !important;
+    border-left: none !important;
+    border-top: 1px solid #2a2e3b !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── User: timeframe tab row → horizontal scroll ── */
+  .nk-user-timeframes {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* ── User: trading action bar → wraps on small screens ── */
+  .nk-user-trade-bar {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    justify-content: flex-start !important;
+  }
+
+  /* ── User: account summary grid 4-col → 2-col ── */
+  .nk-user-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
