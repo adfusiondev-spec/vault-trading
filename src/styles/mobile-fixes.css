@@ -295,9 +295,16 @@
     display: none !important;
   }
 
-  /* Chart container: prevent collapse when body is height:auto */
+  /* Chart wrapper: explicit height so ResizeObserver gets non-zero clientHeight on mount */
   .nk-user-main > div:nth-child(2) {
+    height: 300px !important;
     min-height: 300px !important;
+  }
+
+  /* CandlestickChart ref div: height:100% now resolves against the 300px parent */
+  .nk-user-main > div:nth-child(2) > div {
+    width: 100% !important;
+    height: 100% !important;
   }
 
   /* ── User: main content takes full width ── */
