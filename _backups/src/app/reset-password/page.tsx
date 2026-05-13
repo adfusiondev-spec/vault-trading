@@ -33,22 +33,22 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="nk-page-shell" style={{
+    <div style={{
       minHeight: '100vh', background: '#0b0e11', display: 'flex',
       alignItems: 'center', justifyContent: 'center',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
-      <div className="nk-auth-card" style={{
+      <div style={{
         background: 'rgba(11,14,17,0.9)', border: '1px solid rgba(255,215,0,0.3)',
         borderRadius: 12, padding: 40, width: '100%', maxWidth: 400,
         boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
       }}>
-        <div className="nk-auth-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32 }}>
           <div style={{ width: 48, height: 48, background: '#FFD700', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
             <ShieldCheck size={26} color="#000" strokeWidth={2.5} />
           </div>
-          <h1 className="nk-auth-title" style={{ color: '#fff', fontWeight: 800, fontSize: 20, letterSpacing: '0.1em', margin: 0 }}>{t.reset_password_title}</h1>
-          <p className="nk-auth-tagline" style={{ color: '#8a8e9b', fontSize: 13, marginTop: 8 }}>Nokhba — {t.secure_portal}</p>
+          <h1 style={{ color: '#fff', fontWeight: 800, fontSize: 20, letterSpacing: '0.1em', margin: 0 }}>{t.reset_password_title}</h1>
+          <p style={{ color: '#8a8e9b', fontSize: 13, marginTop: 8 }}>Nokhba — {t.secure_portal}</p>
         </div>
 
         {done ? (
@@ -90,7 +90,6 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="nk-cta-button"
               style={{
                 marginTop: 8, padding: '14px 0', background: '#FFD700', border: 'none',
                 borderRadius: 6, color: '#000', fontWeight: 700, fontSize: 13,

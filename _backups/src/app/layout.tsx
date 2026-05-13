@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
-import "@/styles/mobile-fixes.css";
 import { I18nProvider } from '@/lib/i18n';
 
 const inter = Inter({

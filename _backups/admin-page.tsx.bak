@@ -12,7 +12,7 @@ import PaymentSettingsPanel from '@/components/admin/PaymentSettingsPanel'
 import { PackageSettings } from '@/components/admin/PackageSettings'
 import { useTranslation } from '@/lib/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { calculateMonthlyPrice, PricingConfig } from '@/lib/pricing'
+import { calculateMonthlyPrice } from '@/lib/pricing'
 
 
 
@@ -76,32 +76,19 @@ export default function SuperAdminDashboard() {
 
   const ASSET_CLASSES = ['Crypto', 'Forex', 'Commodities', 'Global Indices', 'Saudi Indices'] as const
 
-  const [pricingConfig, setPricingConfig] = useState<PricingConfig>({ base: 300, globalAddon: 100, saudiAddon: 300 })
-
-  useEffect(() => {
-    fetch('/api/pricing-config')
-      .then(r => r.json())
-      .then(d => {
-        if (d.base_price !== undefined) {
-          setPricingConfig({ base: d.base_price, globalAddon: d.global_indices_addon, saudiAddon: d.saudi_indices_addon })
-        }
-      })
-      .catch(() => {})
-  }, [])
-
   useEffect(() => {
     setMounted(true)
     const supabase = createClient()
-
+    
     const checkAuth = async () => {
       try {
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-        if (!authUser || authError) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
           router.push('/login')
           return
         }
 
-        const { data: profile } = await supabase.from('profiles').select('role, company_slug').eq('id', authUser.id).single()
+        const { data: profile } = await supabase.from('profiles').select('role, company_slug').eq('id', session.user.id).single()
 
         if (!profile || profile.role !== 'super_admin') {
           if (profile?.role === 'trader' || profile?.role === 'user') router.push('/user')
@@ -113,7 +100,7 @@ export default function SuperAdminDashboard() {
           return
         }
         setIsAuthorized(true)
-        setAdminId(authUser.id)
+        setAdminId(session.user.id)
       } catch (e) {
         console.error('Auth check error:', e)
         router.push('/login')
@@ -289,7 +276,7 @@ export default function SuperAdminDashboard() {
         if (m === 'Saudi Indices') return 'saudi_indices'
         return m.toLowerCase()
       })
-      const { monthly: subPrice } = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any, pricingConfig)
+      const { monthly: subPrice } = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any)
       const editUpdate: any = {
         full_name: formData.company,
         company_slug: formData.slug,
@@ -345,7 +332,7 @@ export default function SuperAdminDashboard() {
           if (m === 'Saudi Indices') return 'saudi_indices'
           return m.toLowerCase()
         })
-        const { monthly: subPrice2 } = calculateMonthlyPrice(mktKeys2, billingKey2, pkgType2 as any, pricingConfig)
+        const { monthly: subPrice2 } = calculateMonthlyPrice(mktKeys2, billingKey2, pkgType2 as any)
         await (supabase.from('profiles') as any).update({
           subscription_package: formData.subscriptionPackage,
           market_access: formData.market_access,
@@ -384,12 +371,12 @@ export default function SuperAdminDashboard() {
   if (!isAuthorized) return null
 
   return (
-    <div className="nk-dashboard-shell" style={{
+    <div style={{
       height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
       background: '#040608', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'hidden'
     }}>
       {/* ── Top Navigation Bar ── */}
-      <div className="nk-dashboard-header" style={{
+      <div style={{
         height: 60, flexShrink: 0, borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 24px', background: 'rgba(4,6,8,0.95)'
@@ -419,7 +406,7 @@ export default function SuperAdminDashboard() {
               {unreadCount > 0 && <div style={{ position: 'absolute', top: -4, right: -4, background: '#ef5350', color: '#fff', fontSize: 9, fontWeight: 700, width: 14, height: 14, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
             </div>
             {showNotifications && (
-              <div className="nk-notif-dropdown" style={{ position: 'absolute', top: 30, right: -120, width: 300, background: 'rgba(4,6,8,0.95)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+              <div style={{ position: 'absolute', top: 30, right: -120, width: 300, background: 'rgba(4,6,8,0.95)', border: '1px solid var(--border)', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 700, color: '#fff' }}>System Notifications</div>
                 <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                   {notifications.length === 0 ? (
@@ -447,10 +434,10 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      <div className="nk-dashboard-body" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        
         {/* ── Sidebar CRM Navigation ── */}
-        <div className="nk-admin-sidebar" style={{
+        <div style={{
           width: 200, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',
           display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px'
         }}>
@@ -501,7 +488,7 @@ export default function SuperAdminDashboard() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#020304', overflowY: 'auto' }}>
           
           {/* Top Summary Bar */}
-          <div className="nk-stats-grid" style={{
+          <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, padding: 24, borderBottom: '1px solid var(--border)'
           }}>
             <SummaryCard title="Global System Volume" value="$28.5B" icon={Globe} color="#FFD700" />
@@ -535,7 +522,6 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
-                  <div className="nk-table-scroll-x">
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead style={{ background: 'rgba(0,0,0,0.3)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                       <tr>
@@ -666,11 +652,10 @@ export default function SuperAdminDashboard() {
                       })}
                     </tbody>
                   </table>
-                  </div>{/* nk-table-scroll-x */}
                 </div>
               </div>
             )}
-
+            
             {activeTab === 'financial' && (
               <div style={{ overflowY: 'auto', height: '100%', padding: '24px' }}>
                 <FinancialDesk />
@@ -700,14 +685,14 @@ export default function SuperAdminDashboard() {
       {/* ── Modal for Manage / Add Company ── */}
       {isModalOpen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)', overflowY: 'auto', padding: '20px' }}>
-          <div className="fade-in nk-modal-inner" style={{ background: '#0a0c10', border: '1px solid #FFD700', borderRadius: 12, width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', padding: 24, boxShadow: '0 10px 40px rgba(255,215,0,0.1)', margin: 'auto' }}>
+          <div className="fade-in" style={{ background: '#0a0c10', border: '1px solid #FFD700', borderRadius: 12, width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', padding: 24, boxShadow: '0 10px 40px rgba(255,215,0,0.1)', margin: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontSize: 18, color: '#FFD700', fontWeight: 700, margin: 0 }}>{editingTenant ? 'MANAGE TENANT' : 'ADD NEW COMPANY'}</h3>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: '#c0c3ce', cursor: 'pointer' }}><X size={20} /></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="nk-modal-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>{t.company_name_col}</label>
                   <input value={formData.company} onChange={e => {
@@ -722,7 +707,7 @@ export default function SuperAdminDashboard() {
                 </div>
               </div>
               
-              <div className="nk-modal-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', color: '#8a8e9b', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>ADMIN EMAIL</label>
                   <input type="email" value={formData.adminEmail} onChange={e => setFormData({...formData, adminEmail: e.target.value})} placeholder="admin@domain.com" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 14px', borderRadius: 6, outline: 'none' }} />
@@ -816,7 +801,7 @@ export default function SuperAdminDashboard() {
                   if (m === 'Saudi Indices') return 'saudi_indices'
                   return m.toLowerCase()
                 })
-                const pricing = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any, pricingConfig)
+                const pricing = calculateMonthlyPrice(mktKeys, billingKey, pkgType as any)
                 return (
                   <div style={{
                     padding: '14px 18px', background: 'rgba(255,215,0,0.04)',

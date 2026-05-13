@@ -97,14 +97,14 @@ export default function SignupPage() {
     form.country
 
   return (
-    <div className="signup-wrapper nk-page-shell" style={{
+    <div className="signup-wrapper" style={{
       height: '100vh', width: '100vw', overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff',
     }}>
 
       {/* Background ambient glow */}
-      <div className="nk-bg-glow" style={{
+      <div style={{
         position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
         width: 700, height: 700,
         background: 'radial-gradient(circle, rgba(255,215,0,0.03) 0%, rgba(11,14,17,0) 70%)',
@@ -112,7 +112,7 @@ export default function SignupPage() {
       }} />
 
       {/* Card — 650px wide, 2-column grid layout */}
-      <div className="nk-auth-card" style={{
+      <div style={{
         width: '100%', maxWidth: 650, padding: '32px 40px 28px',
         background: 'rgba(11,14,17,0.7)', backdropFilter: 'blur(10px)',
         border: '1px solid rgba(255,215,0,0.15)',
@@ -123,7 +123,7 @@ export default function SignupPage() {
       }}>
 
         {/* Header */}
-        <div className="nk-auth-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 28 }}>
           <div style={{
             width: 44, height: 44, borderRadius: 10, background: '#FFD700',
             display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
@@ -131,15 +131,15 @@ export default function SignupPage() {
           }}>
             <ShieldCheck size={24} strokeWidth={2.5} color="#000" />
           </div>
-          <h1 className="nk-auth-title" style={{ fontWeight: 800, fontSize: 20, letterSpacing: '0.15em', marginBottom: 4 }}>Nokhba</h1>
-          <p className="nk-auth-tagline" style={{ color: '#8a8e9b', fontSize: 12, letterSpacing: '0.05em' }}>{t.one_day_trial}</p>
+          <h1 style={{ fontWeight: 800, fontSize: 20, letterSpacing: '0.15em', marginBottom: 4 }}>Nokhba</h1>
+          <p style={{ color: '#8a8e9b', fontSize: 12, letterSpacing: '0.05em' }}>{t.one_day_trial}</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
           {/* ── 2-column grid for all 6 fields ── */}
-          <div className="signup-grid nk-form-row">
+          <div className="signup-grid">
 
             {/* Row 1 — Left: Company Name */}
             <div>
@@ -259,7 +259,6 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={isSubmitting || !isValid}
-            className="nk-cta-button"
             style={{
               marginTop: 4, padding: '14px 0', width: '100%', borderRadius: 6,
               background: '#FFD700', border: 'none', cursor: isSubmitting || !isValid ? 'not-allowed' : 'pointer',

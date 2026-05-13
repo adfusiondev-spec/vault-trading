@@ -965,8 +965,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
 
     const checkAuth = async () => {
       try {
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-        const session = authUser && !authError ? { user: authUser } : null
+        const { data: { session } } = await supabase.auth.getSession()
 
         // ── Super-Admin impersonation override ──
         // When a super admin clicks "Enter Sub-Admin Dashboard", vault_impersonated_tenant_id
@@ -1478,7 +1477,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
   }
 
   return (
-    <div className="nk-dashboard-shell" style={{
+    <div style={{
       minHeight: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
       background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'auto'
     }}>
@@ -1531,7 +1530,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
       )}
 
       {/* ── Top Navigation Bar ── */}
-      <div className="nk-dashboard-header" style={{
+      <div style={{
         height: 60, flexShrink: 0, borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 24px', background: 'rgba(11,14,17,0.95)'
@@ -1561,7 +1560,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               {unreadCount > 0 && <div style={{ position: 'absolute', top: -4, right: -4, background: '#ef5350', color: '#fff', fontSize: 9, fontWeight: 700, width: 14, height: 14, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
             </div>
             {showNotifications && (
-              <div className="nk-notif-dropdown" style={{ position: 'absolute', top: 30, right: -120, width: 300, background: '#1a1e2e', border: '1px solid #2a2e3b', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+              <div style={{ position: 'absolute', top: 30, right: -120, width: 300, background: '#1a1e2e', border: '1px solid #2a2e3b', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #2a2e3b', fontSize: 13, fontWeight: 700, color: '#fff' }}>Notifications</div>
                 <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                   {notifications.length === 0 ? (
@@ -1628,10 +1627,10 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         </div>
       )}
 
-      <div className="nk-dashboard-body" style={{ display: 'flex', height: 'calc(100vh - 60px)' }}>
+      <div style={{ display: 'flex', height: 'calc(100vh - 60px)' }}>
 
         {/* ── Sidebar CRM Navigation ── */}
-        <div className="nk-subadmin-sidebar" style={{
+        <div style={{
           width: 240, flexShrink: 0, overflowY: 'hidden', borderRight: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)',
           display: 'flex', flexDirection: 'column', gap: 4, padding: '20px 10px'
         }}>
@@ -1684,7 +1683,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', backgroundColor: '#06080a', overflowY: 'auto', minHeight: 0 }}>
           
           {/* Top Summary Bar */}
-          <div className="nk-stats-grid" style={{
+          <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, padding: 24, borderBottom: '1px solid var(--border)'
           }}>
             <SummaryCard title="Total Clients" value={traders.length.toString()} icon={Users} color="#fff" />
@@ -1699,7 +1698,6 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
               <div className="crm-section fade-in">
                 <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: '#FFD700', letterSpacing: '0.05em' }}>LIVE TRADE MONITOR</h2>
                 <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
-                  <div className="nk-table-scroll-x">
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                     <thead style={{ background: 'rgba(0,0,0,0.2)', color: '#8a8e9b', borderBottom: '1px solid var(--border)' }}>
                       <tr>
@@ -1791,7 +1789,6 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                       ))}
                     </tbody>
                   </table>
-                  </div>{/* nk-table-scroll-x */}
                 </div>
               </div>
             )}
@@ -1867,7 +1864,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </div>
 
                 {/* ── Excel-style spreadsheet table ── */}
-                <div className="nk-table-scroll-x" style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(255,215,0,0.15)', boxShadow: '0 4px 30px rgba(0,0,0,0.4)' }}>
+                <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid rgba(255,215,0,0.15)', boxShadow: '0 4px 30px rgba(0,0,0,0.4)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12, minWidth: 980 }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,215,0,0.07)', borderBottom: '2px solid rgba(255,215,0,0.2)' }}>
@@ -2184,7 +2181,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20
         }}>
-          <div className="nk-modal-inner" style={{
+          <div style={{
             width: '100%', maxWidth: 450, background: '#0b0e11', borderRadius: 16, border: '1px solid rgba(255,215,0,0.2)',
             boxShadow: '0 20px 50px rgba(0,0,0,0.5)', overflow: 'hidden'
           }}>
@@ -2204,7 +2201,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 />
               </div>
 
-              <div className="nk-modal-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>EMAIL ADDRESS</label>
                   <input 
@@ -2225,7 +2222,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
                 </div>
               </div>
 
-              <div className="nk-modal-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#8a8e9b', marginBottom: 6 }}>PHONE NUMBER</label>
                   <input 
@@ -2269,7 +2266,7 @@ export default function SubAdminDashboard({ params }: { params: Promise<{ slug: 
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20
         }}>
-          <div className="nk-modal-inner" style={{
+          <div style={{
             width: '100%', maxWidth: 450, background: '#0b0e11', borderRadius: 16, border: '1px solid rgba(255,215,0,0.2)',
             boxShadow: '0 20px 50px rgba(0,0,0,0.5)', maxHeight: '90vh', overflowY: 'auto', overflowX: 'hidden'
           }}>

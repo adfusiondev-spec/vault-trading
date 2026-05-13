@@ -78,21 +78,21 @@ function LoginForm() {
   }
 
   return (
-    <div className="nk-page-shell" style={{
+    <div style={{
       minHeight: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
       justifyContent: 'center', alignItems: 'center', background: '#0b0e11',
       fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff', overflow: 'hidden'
     }}>
-
+      
       {/* ── Background ambient glow ── */}
-      <div className="nk-bg-glow" style={{
+      <div style={{
         position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
         width: 600, height: 600, background: 'radial-gradient(circle, rgba(255,215,0,0.03) 0%, rgba(11,14,17,0) 70%)',
         pointerEvents: 'none', zIndex: 0
       }} />
 
       {/* ── Login Card ── */}
-      <div className="nk-auth-card" style={{
+      <div style={{
         width: '100%', maxWidth: 400, padding: 40,
         background: 'rgba(11,14,17,0.7)', backdropFilter: 'blur(10px)',
         border: '1px solid rgba(255,215,0,0.15)',
@@ -103,7 +103,7 @@ function LoginForm() {
       }}>
 
         {/* ── Header ── */}
-        <div className="nk-auth-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 40 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 40 }}>
           <div style={{
             width: 48, height: 48, borderRadius: 10, background: 'var(--gold, #FFD700)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16,
@@ -111,8 +111,8 @@ function LoginForm() {
           }}>
             <ShieldCheck size={26} strokeWidth={2.5} color="#000" />
           </div>
-          <h1 className="nk-auth-title" style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>Nokhba</h1>
-          <p className="nk-auth-tagline" style={{ color: '#8a8e9b', fontSize: 13, letterSpacing: '0.05em' }}>{t.secure_trading}</p>
+          <h1 style={{ fontWeight: 800, fontSize: 22, letterSpacing: '0.15em', marginBottom: 6 }}>Nokhba</h1>
+          <p style={{ color: '#8a8e9b', fontSize: 13, letterSpacing: '0.05em' }}>{t.secure_trading}</p>
           <div style={{ marginTop: 12 }}><LanguageToggle /></div>
         </div>
 
@@ -184,7 +184,6 @@ function LoginForm() {
           <button
             type="submit"
             disabled={isSubmitting || !email || !password}
-            className="nk-cta-button"
             style={{
               marginTop: 10, padding: '15px 0', width: '100%', borderRadius: 6,
               background: '#FFD700', border: 'none', cursor: 'pointer',

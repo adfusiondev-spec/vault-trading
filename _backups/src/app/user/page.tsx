@@ -345,13 +345,13 @@ export default function Dashboard() {
     ensureFlashStyles()
     setMounted(true)
     const init = async () => {
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-      if (authUser && !authError) {
-        userIdRef.current = authUser.id
-        const { data: p } = await supabase.from('profiles').select('*').eq('id', authUser.id).single()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        userIdRef.current = session.user.id
+        const { data: p } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
         if (p) {
           setUser(p);
-          refresh(authUser.id);
+          refresh(session.user.id);
           fetch('/api/payment-settings/user')
             .then(r => r.json())
             .then(({ settings }) => { if (settings) setCompanySettings(settings) })
@@ -442,10 +442,10 @@ export default function Dashboard() {
   if (!mounted) return null
 
   return (
-    <div className="nk-dashboard-shell" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#131722', color: '#d1d4dc', overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#131722', color: '#d1d4dc', overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
       
       {/* TOP HEADER */}
-      <div className="nk-dashboard-header" style={{ height: 50, borderBottom: '1px solid #2a2e3b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', background: '#1a1e2e' }}>
+      <div style={{ height: 50, borderBottom: '1px solid #2a2e3b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', background: '#1a1e2e' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ background: '#FFD700', borderRadius: 4, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -463,7 +463,7 @@ export default function Dashboard() {
               {unreadCount > 0 && <div style={{ position: 'absolute', top: -4, right: -4, background: '#ef5350', color: '#fff', fontSize: 9, fontWeight: 700, width: 14, height: 14, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
             </div>
             {showNotifications && (
-              <div className="nk-notif-dropdown" style={{ position: 'absolute', top: 30, right: -80, width: 300, background: '#1a1e2e', border: '1px solid #2a2e3b', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
+              <div style={{ position: 'absolute', top: 30, right: -80, width: 300, background: '#1a1e2e', border: '1px solid #2a2e3b', borderRadius: 8, zIndex: 50, boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #2a2e3b', fontSize: 13, fontWeight: 700, color: '#fff' }}>Notifications</div>
                 <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                   {notifications.length === 0 ? (
@@ -501,10 +501,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="nk-dashboard-body" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        
         {/* LEFT SIDEBAR: WATCHLIST */}
-        <div className="nk-user-watchlist" style={{ width: 300, background: '#131722', borderRight: '1px solid #2a2e3b', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: 300, background: '#131722', borderRight: '1px solid #2a2e3b', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '8px 16px', borderBottom: '1px solid #1e222d' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#FFD700' }}>Watchlist</span>
@@ -561,7 +561,7 @@ export default function Dashboard() {
         </div>
 
         {/* MIDDLE SECTION: CHART + TRADING + HISTORY */}
-        <div className="nk-user-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: '1px solid #2a2e3b' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: '1px solid #2a2e3b' }}>
           
           {/* Chart Header */}
           <div style={{ padding: '0 16px', height: 48, borderBottom: '1px solid #2a2e3b', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#131722' }}>
@@ -586,14 +586,14 @@ export default function Dashboard() {
           </div>
 
           {/* Chart Footer Timeframes */}
-          <div className="nk-user-timeframes" style={{ display: 'flex', gap: 16, padding: '8px 16px', background: '#131722', borderTop: '1px solid #2a2e3b', borderBottom: '1px solid #1e222d', fontSize: 11, color: '#787b86', fontWeight: 600 }}>
+          <div style={{ display: 'flex', gap: 16, padding: '8px 16px', background: '#131722', borderTop: '1px solid #2a2e3b', borderBottom: '1px solid #1e222d', fontSize: 11, color: '#787b86', fontWeight: 600 }}>
              {['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y', '5Y', 'All'].map(t => (
                <span key={t} style={{ color: t==='1D' ? '#fff' : '#787b86', background: t==='1D' ? '#2a2e3b' : 'transparent', padding: '2px 6px', borderRadius: 4, cursor: 'pointer' }}>{t}</span>
              ))}
           </div>
 
           {/* Trading Action Bar */}
-          <div className="nk-user-trade-bar" style={{ padding: '16px', background: '#1a1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2a2e3b' }}>
+          <div style={{ padding: '16px', background: '#1a1e2e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #2a2e3b' }}>
              <div style={{ display: 'flex', gap: 32 }}>
                <div>
                  <div style={{ fontSize: 10, color: '#787b86', marginBottom: 6, fontWeight: 600 }}>ASSET</div>
@@ -647,7 +647,7 @@ export default function Dashboard() {
               ))}
             </div>
             
-            <div style={{ flex: 1, overflowY: 'auto' }} className="scroll-hide nk-table-scroll-x">
+            <div style={{ flex: 1, overflowY: 'auto' }} className="scroll-hide">
               {bottomTab === 'statements' ? (
                 <table style={{ width: '100%', fontSize: 11, textAlign: 'left', borderCollapse: 'collapse' }}>
                   <thead style={{ color: '#787b86', borderBottom: '1px solid #1e222d' }}>
@@ -767,7 +767,7 @@ export default function Dashboard() {
                     { label: 'Total Transactions', value: String(uiTxs.length), color: '#fff' },
                   ]
                   return (
-                    <div className="nk-user-summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: '#1e222d' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, background: '#1e222d' }}>
                       {stats.map(s => (
                         <div key={s.label} style={{ background: '#131722', padding: '16px 20px' }}>
                           <div style={{ fontSize: 10, color: '#787b86', fontWeight: 600, letterSpacing: '0.05em', marginBottom: 6 }}>{s.label.toUpperCase()}</div>
@@ -785,7 +785,7 @@ export default function Dashboard() {
         </div>
 
         {/* RIGHT SIDEBAR: ACCOUNT & DEPOSIT */}
-        <div className="nk-user-panel" style={{ width: 320, background: '#1a1e2e', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        <div style={{ width: 320, background: '#1a1e2e', display: 'flex', flexDirection: 'column', position: 'relative' }}>
           
           <div style={{ padding: 20, borderBottom: '1px solid #2a2e3b' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
@@ -915,7 +915,7 @@ export default function Dashboard() {
           }}
           onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}
         >
-          <div className="nk-modal-inner" style={{
+          <div style={{
             backgroundColor: '#1a1e2e',
             borderRadius: '12px',
             padding: '24px',

@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <title>NOKHBA — Sub-Admin & Sales User Manual</title>
+    <meta name="description" content="NOKHBA Platform — Tenant Operator & Sales Team User Manual" />
+    <meta name="author" content="NOKHBA" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      .gold { color: #d4af37; }
+      .bg-gold { background-color: #d4af37; }
+      .border-gold { border-color: #d4af37; }
+      .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 9999px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+      .step-circle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 9999px;
+        background: #d4af37;
+        color: #000;
+        font-weight: 700;
+        font-size: 0.82rem;
+        flex-shrink: 0;
+      }
+      table { border-collapse: collapse; width: 100%; }
+      th { background: #1f2937; color: #d4af37; text-align: left; padding: 10px 14px; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; }
+      td { padding: 10px 14px; font-size: 0.9rem; border-bottom: 1px solid #e5e7eb; color: #374151; }
+      tr:last-child td { border-bottom: none; }
+      tr:hover td { background: #f9fafb; }
+      .callout { border-left: 4px solid #d4af37; background: #fffbeb; padding: 14px 18px; border-radius: 0 8px 8px 0; }
+      .callout-blue { border-left: 4px solid #3b82f6; background: #eff6ff; padding: 14px 18px; border-radius: 0 8px 8px 0; }
+      .callout-red  { border-left: 4px solid #ef4444; background: #fef2f2; padding: 14px 18px; border-radius: 0 8px 8px 0; }
+      code { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; padding: 2px 6px; font-size: 0.82rem; color: #111827; }
+    </style>
+  </head>
+
+  <body class="bg-gray-50">
+
+    <div class="flex">
+
+      <!-- ─── Left Sidebar ─────────────────────────────────────── -->
+      <aside class="w-72 min-h-screen bg-gray-900 text-white overflow-y-auto sticky top-0 flex flex-col">
+
+        <!-- Logo / Brand -->
+        <div class="px-6 py-7 border-b border-gray-800">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center" style="background:#d4af37;">
+              <svg class="w-5 h-5" fill="none" stroke="#000" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                  d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="font-bold text-lg tracking-widest text-white">NOKHBA</div>
+              <div class="text-xs text-gray-400 tracking-wide">Tenant User Manual</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nav -->
+        <nav class="mt-4 flex-1">
+          <div class="px-6 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-widest">Contents</div>
+          <ul class="space-y-1">
+
+            <li>
+              <a href="#introduction" class="flex items-center gap-3 px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-yellow-400 transition-colors duration-150 text-sm">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                1. Introduction
+              </a>
+            </li>
+
+            <li>
+              <a href="#client-management" class="flex items-center gap-3 px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-yellow-400 transition-colors duration-150 text-sm">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                2. Client Management
+              </a>
+            </li>
+
+            <li>
+              <a href="#trade-monitor" class="flex items-center gap-3 px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-yellow-400 transition-colors duration-150 text-sm">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                3. Trade Monitor
+              </a>
+            </li>
+
+            <li>
+              <a href="#financial-operations" class="flex items-center gap-3 px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-yellow-400 transition-colors duration-150 text-sm">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                4. Financial Operations
+              </a>
+            </li>
+
+            <li>
+              <a href="#payment-settings" class="flex items-center gap-3 px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-yellow-400 transition-colors duration-150 text-sm">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                5. Payment Settings
+              </a>
+            </li>
+
+          </ul>
+        </nav>
+
+        <div class="p-5 text-xs text-gray-500 border-t border-gray-800">
+          © 2025 NOKHBA Platform. All rights reserved.
+        </div>
+      </aside>
+
+      <!-- ─── Main Content ──────────────────────────────────────── -->
+      <main class="flex-1 overflow-y-auto">
+        <div class="p-10 max-w-4xl">
+
+          <!-- Cover -->
+          <section id="cover" class="mb-16 pt-4">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg" style="background:#d4af37;">
+                <svg class="w-8 h-8" fill="none" stroke="#000" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                    d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                </svg>
+              </div>
+              <div>
+                <h1 class="text-4xl font-extrabold text-gray-900 tracking-tight">NOKHBA</h1>
+                <p class="text-lg text-gray-500 font-medium">Sub-Admin &amp; Sales Team User Manual</p>
+              </div>
+            </div>
+
+            <div class="border-t border-b border-gray-200 py-5 my-8 grid grid-cols-2 gap-4 text-sm text-gray-600">
+              <div><span class="font-semibold text-gray-800">Audience:</span> Tenant Operators (Sub-Admins) &amp; Sales Team Members</div>
+              <div><span class="font-semibold text-gray-800">Version:</span> 1.0</div>
+              <div><span class="font-semibold text-gray-800">Platform:</span> NOKHBA Multi-Tenant Trading CRM</div>
+              <div><span class="font-semibold text-gray-800">Support:</span> Contact your NOKHBA administrator</div>
+            </div>
+
+            <p class="text-gray-600 leading-relaxed">
+              This manual covers everything a <strong>Sub-Admin (tenant operator)</strong> and
+              <strong>Sales team member</strong> need to operate the NOKHBA platform day-to-day —
+              from onboarding traders and managing the CRM pipeline, to monitoring live trades,
+              approving financial transactions, and configuring payment gateways.
+            </p>
+          </section>
+
+
+          <!-- ── SECTION 1: INTRODUCTION ─────────────────────────── -->
+          <section id="introduction" class="mb-20 pt-16">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="step-circle text-base w-8 h-8">1</span>
+              <h2 class="text-3xl font-bold text-gray-900">Introduction</h2>
+            </div>
+            <div class="h-1 w-16 rounded mb-8" style="background:#d4af37;"></div>
+
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">What is NOKHBA?</h3>
+            <p class="text-gray-600 mb-6 leading-relaxed">
+              NOKHBA is a white-label, multi-tenant B2B SaaS trading platform built for brokers and
+              financial institutions. As a <strong>Sub-Admin</strong> (tenant operator), you have your own
+              isolated workspace — your own traders, CRM pipeline, sales team, and financial desk —
+              completely separate from every other broker on the platform.
+            </p>
+
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Role Overview</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#fef9e7; border:1px solid #d4af37;">
+                    <svg class="w-4 h-4" fill="none" stroke="#d4af37" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                    </svg>
+                  </div>
+                  <span class="font-bold text-gray-800">Sub-Admin</span>
+                  <span class="badge ml-auto" style="background:#fef9e7; color:#92680a;">Tenant Operator</span>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                  Full access to your company's CRM dashboard. Manage traders, process deposits &amp;
+                  withdrawals, monitor all live trades, run the sales team, and manage your subscription
+                  and payment gateways.
+                </p>
+                <div class="mt-3 text-xs text-gray-500">
+                  Dashboard URL: <code>/sub-admin/[your-slug]</code>
+                </div>
+              </div>
+
+              <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#eff6ff; border:1px solid #93c5fd;">
+                    <svg class="w-4 h-4" fill="none" stroke="#3b82f6" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                  </div>
+                  <span class="font-bold text-gray-800">Sales</span>
+                  <span class="badge ml-auto" style="background:#eff6ff; color:#1d4ed8;">Sales Member</span>
+                </div>
+                <p class="text-sm text-gray-600 leading-relaxed">
+                  Scoped view: only your assigned leads and traders. Monitor trades from your assigned
+                  clients, advance leads through the 9-stage funnel, and convert qualified leads into
+                  live trader accounts.
+                </p>
+                <div class="mt-3 text-xs text-gray-500">
+                  Dashboard URL: <code>/sub-admin/[your-slug]/sales</code>
+                </div>
+              </div>
+            </div>
+
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Dashboard Tabs at a Glance</h3>
+
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mb-8">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tab</th>
+                    <th>Sub-Admin</th>
+                    <th>Sales</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Trade Monitor</strong></td>
+                    <td>All traders' live trades</td>
+                    <td>Assigned traders only</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Clients</strong></td>
+                    <td>Full trader roster + actions</td>
+                    <td>Assigned traders only</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Deposits</strong></td>
+                    <td>All pending + history</td>
+                    <td>Not available</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Withdrawals</strong></td>
+                    <td>All pending + history</td>
+                    <td>Not available</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Sales Team</strong></td>
+                    <td>Manage sales reps</td>
+                    <td>Not available</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Leads</strong></td>
+                    <td>Full lead pipeline</td>
+                    <td>Assigned leads only</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Subscription</strong></td>
+                    <td>Payment history + upgrade</td>
+                    <td>Not available</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Payment Settings</strong></td>
+                    <td>Configure gateways</td>
+                    <td>Not available</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Profile</strong></td>
+                    <td>Account settings</td>
+                    <td>Account settings</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">Language Toggle</h3>
+            <p class="text-gray-600 leading-relaxed">
+              NOKHBA supports <strong>English</strong> and <strong>Arabic (RTL)</strong>. Use the language
+              toggle button in the dashboard header to switch at any time. Your preference is saved
+              automatically and persists across sessions.
+            </p>
+          </section>
+
+
+          <!-- ── SECTION 2: CLIENT MANAGEMENT ───────────────────── -->
+          <section id="client-management" class="mb-20 pt-16">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="step-circle text-base w-8 h-8">2</span>
+              <h2 class="text-3xl font-bold text-gray-900">Client Management</h2>
+            </div>
+            <div class="h-1 w-16 rounded mb-8" style="background:#d4af37;"></div>
+
+            <!-- 2.1 Inviting Traders -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">2.1 Inviting New Traders</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              Traders register via a unique invite link tied to your account. NOKHBA does not allow open
+              public registration — every trader must be linked to a broker at sign-up.
+            </p>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
+              <div class="font-semibold text-gray-700 mb-4">How to generate and share an invite link</div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">1</span>
+                  <span class="text-sm text-gray-600">Open the <strong>Clients</strong> tab in your CRM dashboard.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">2</span>
+                  <span class="text-sm text-gray-600">Locate the <strong>Trader Invite Link</strong> panel near the top of the page.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">3</span>
+                  <span class="text-sm text-gray-600">Click <strong>Copy</strong> to copy your unique invite URL to the clipboard.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">4</span>
+                  <span class="text-sm text-gray-600">Share the URL with your client. When they register through that link, they are automatically linked to your account.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout mb-8">
+              <p class="text-sm text-yellow-800"><strong>Tip:</strong> Sales team members can also invite traders using their personal <code>referral_code</code>. When a trader registers via a referral link, they are linked to both the sales rep and your brokerage.</p>
+            </div>
+
+            <!-- 2.2 Adding a Client Directly -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">2.2 Adding a Client Directly</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              Sub-Admins can register a trader directly from the dashboard without sending an invite link.
+            </p>
+            <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-8">
+              <div class="font-semibold text-gray-700 mb-4">Steps — Add Client modal</div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">1</span>
+                  <span class="text-sm text-gray-600">Click <strong>Add Client</strong> in the Clients tab.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">2</span>
+                  <span class="text-sm text-gray-600">Fill in: <strong>Full Name</strong>, <strong>Email</strong>, <strong>Password</strong>, <strong>Phone</strong>, <strong>Country</strong>.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">3</span>
+                  <span class="text-sm text-gray-600">Click <strong>Create</strong>. The account is active immediately — no email verification required for directly created accounts.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2.3 Client Detail Page -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">2.3 Client Detail Page</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              Click <strong>Manage →</strong> on any client row to open their full detail page. This page is split into two panels:
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                <div class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="#d4af37" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                  </svg>
+                  Left Panel — Trading Terminal
+                </div>
+                <ul class="space-y-2 text-sm text-gray-600">
+                  <li>📊 Quick stats: Total Deposits, Total Withdrawals, Closed P&amp;L, Open Positions</li>
+                  <li>⚡ Execute trades on behalf of the client (asset selector, BUY/SELL)</li>
+                  <li>📋 Live open positions table with Emergency Close button per trade</li>
+                  <li>💳 Full transaction history (deposits &amp; withdrawals)</li>
+                  <li>💰 Balance adjustment — credit or debit the wallet with a note</li>
+                </ul>
+              </div>
+              <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                <div class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="#3b82f6" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                  </svg>
+                  Right Panel — CRM &amp; Security
+                </div>
+                <ul class="space-y-2 text-sm text-gray-600">
+                  <li>🏷️ Lead status dropdown (9 stages)</li>
+                  <li>✏️ Edit client info: Name, Phone, Country</li>
+                  <li>🔐 Reveal / reset client password</li>
+                  <li>🚫 Ban / Unban client (blocks login)</li>
+                  <li>📝 Retention &amp; call notes (free text, saved to profile)</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 2.4 Leads & CRM Pipeline -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">2.4 Leads &amp; CRM Pipeline</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              The <strong>Leads</strong> tab gives you a full pipeline view of all prospective traders.
+              Leads can be created manually, imported in bulk (CSV), or assigned to specific sales reps.
+            </p>
+
+            <h4 class="font-semibold text-gray-700 mb-3">9 Lead Status Stages</h4>
+            <div class="flex flex-wrap gap-2 mb-6">
+              <span class="badge" style="background:#dbeafe; color:#1e40af;">New Prospect</span>
+              <span class="badge" style="background:#fef3c7; color:#92400e;">Hot Lead</span>
+              <span class="badge" style="background:#d1fae5; color:#065f46;">Active</span>
+              <span class="badge" style="background:#e0e7ff; color:#3730a3;">In Negotiation</span>
+              <span class="badge" style="background:#fce7f3; color:#9d174d;">Contacted</span>
+              <span class="badge" style="background:#f3f4f6; color:#374151;">Prospect</span>
+              <span class="badge" style="background:#f3f4f6; color:#6b7280;">Cold</span>
+              <span class="badge" style="background:#f3f4f6; color:#9ca3af;">Inactive</span>
+              <span class="badge" style="background:#ecfdf5; color:#065f46;">Active / Funded</span>
+            </div>
+
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              Update a lead's status using the inline dropdown on any leads row. Status updates are
+              saved instantly — no extra save button required.
+            </p>
+
+            <!-- 2.5 Converting a Lead -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">2.5 Converting a Lead to a Trader</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              When a lead is ready to open a live trading account, convert them directly from the Leads tab.
+              This creates a full Supabase Auth account and links them to your brokerage in one step.
+            </p>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
+              <div class="font-semibold text-gray-700 mb-4">Lead Conversion Flow</div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">1</span>
+                  <span class="text-sm text-gray-600">Find the lead in the <strong>Leads</strong> tab and click <strong>Convert →</strong>.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">2</span>
+                  <span class="text-sm text-gray-600">A modal appears showing the lead's name and email. Enter an <strong>initial password</strong> (minimum 8 characters).</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">3</span>
+                  <span class="text-sm text-gray-600">Click <strong>✓ Convert</strong>. A trader account is created. The lead status automatically updates to <span class="badge" style="background:#ecfdf5; color:#065f46;">Active / Funded</span>.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">4</span>
+                  <span class="text-sm text-gray-600">Share the login credentials with the trader. They can log in immediately at <code>/login</code> and change their password from their profile.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout-red mb-6">
+              <p class="text-sm text-red-800"><strong>Note:</strong> Trader accounts start as inactive pending review. A Sub-Admin must activate the account from the Clients tab before the trader can execute live orders.</p>
+            </div>
+
+            <!-- 2.6 Sales Team Management -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">2.6 Managing Your Sales Team</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              The <strong>Sales Team</strong> tab lets you create and manage sales rep accounts within your
+              tenant. Each sales rep gets their own login and a scoped view of only their assigned leads
+              and clients. The number of sales reps you can add is determined by your subscription
+              plan's <em>sales seat limit</em>.
+            </p>
+
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>How</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Create a sales rep</td>
+                    <td>Click <strong>Add Sales Member</strong>, fill in name, email, password</td>
+                  </tr>
+                  <tr>
+                    <td>Assign a lead</td>
+                    <td>In the Leads tab, set the <em>Assigned To</em> field on any lead row</td>
+                  </tr>
+                  <tr>
+                    <td>Assign a trader</td>
+                    <td>On the client detail page, use the <em>Sales Rep</em> assignment field</td>
+                  </tr>
+                  <tr>
+                    <td>Remove a sales rep</td>
+                    <td>Delete from the Sales Team tab — their leads/clients become unassigned</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+
+          <!-- ── SECTION 3: TRADE MONITOR ────────────────────────── -->
+          <section id="trade-monitor" class="mb-20 pt-16">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="step-circle text-base w-8 h-8">3</span>
+              <h2 class="text-3xl font-bold text-gray-900">Trade Monitor</h2>
+            </div>
+            <div class="h-1 w-16 rounded mb-8" style="background:#d4af37;"></div>
+
+            <p class="text-gray-600 mb-6 leading-relaxed">
+              The <strong>Trade Monitor</strong> tab gives you a real-time feed of every active trade across
+              all your clients. Data updates automatically via Supabase Realtime — no page refresh needed.
+            </p>
+
+            <!-- 3.1 Reading the Monitor -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">3.1 Understanding the Trade Table</h3>
+
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mb-8">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Column</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Trader</strong></td>
+                    <td>Full name of the client who placed the trade</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Asset</strong></td>
+                    <td>Trading symbol (e.g. BTCUSDT, XAUUSD, EUR/USD)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Type</strong></td>
+                    <td><span class="badge" style="background:#d1fae5; color:#065f46;">BUY</span> or <span class="badge" style="background:#fee2e2; color:#991b1b;">SELL</span> direction</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Amount</strong></td>
+                    <td>USD value of the position at entry</td>
+                  </tr>
+                  <tr>
+                    <td><strong>P&amp;L</strong></td>
+                    <td>Unrealised profit/loss at current market price — green when profitable, red when at a loss</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Status</strong></td>
+                    <td>Open / Closed</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Details</strong></td>
+                    <td>DETAILS button — navigates to that client's full detail page</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 3.2 Emergency Close -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">3.2 Emergency Close</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              From a client's detail page (accessible via the DETAILS button on any trade row), Sub-Admins
+              can force-close any open position on behalf of a trader using the
+              <span class="badge" style="background:#fee2e2; color:#991b1b;">EMERGENCY CLOSE</span> button
+              on each open position row.
+            </p>
+
+            <div class="callout-red mb-8">
+              <p class="text-sm text-red-800">
+                <strong>Caution:</strong> Emergency close executes at the current market price immediately.
+                This action cannot be undone. Always confirm with the client before closing on their behalf,
+                except in genuine emergency situations (account protection, compliance requirement).
+              </p>
+            </div>
+
+            <!-- 3.3 Sales View -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">3.3 Sales Team — Trade View</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              Sales reps see the same Trade Monitor layout but only see trades from traders assigned to
+              them. The <em>Emergency Close</em> action is not available to the Sales role — trade
+              execution actions are restricted to Sub-Admins only.
+            </p>
+
+            <!-- 3.4 Supported Markets -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">3.4 Supported Markets</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              The instruments available to your traders depend on the market access you have enabled
+              for your subscription. Market access is configured by the NOKHBA master admin.
+            </p>
+
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mb-4">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Examples</th>
+                    <th>Price Feed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Crypto</td>
+                    <td>BTC, ETH, SOL, BNB, XRP, DOGE, ADA, LTC</td>
+                    <td>Binance WebSocket (live)</td>
+                  </tr>
+                  <tr>
+                    <td>Precious Metals</td>
+                    <td>Gold (XAU), Silver, Platinum, Palladium</td>
+                    <td>Simulated (2s updates)</td>
+                  </tr>
+                  <tr>
+                    <td>Energy</td>
+                    <td>WTI Crude, Brent, Natural Gas</td>
+                    <td>Simulated (2s updates)</td>
+                  </tr>
+                  <tr>
+                    <td>FX Majors &amp; Minors</td>
+                    <td>EUR/USD, GBP/USD, USD/JPY, EUR/GBP</td>
+                    <td>Simulated (2s updates)</td>
+                  </tr>
+                  <tr>
+                    <td>Global Indices &amp; Stocks</td>
+                    <td>S&amp;P 500, Nasdaq, DAX, TSLA, NVDA, AAPL</td>
+                    <td>Simulated (2s updates)</td>
+                  </tr>
+                  <tr>
+                    <td>Saudi &amp; Regional Markets</td>
+                    <td>TASI, Aramco, Al Rajhi, SABIC, ACWA Power, DFM</td>
+                    <td>Simulated (2s updates)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout mb-2">
+              <p class="text-sm text-yellow-800">
+                <strong>Real-time:</strong> Crypto prices are streamed live from Binance WebSocket
+                with ~300ms batched updates. All other asset classes use a seeded Brownian motion
+                engine that mirrors realistic market movement patterns for demonstration purposes.
+              </p>
+            </div>
+          </section>
+
+
+          <!-- ── SECTION 4: FINANCIAL OPERATIONS ────────────────── -->
+          <section id="financial-operations" class="mb-20 pt-16">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="step-circle text-base w-8 h-8">4</span>
+              <h2 class="text-3xl font-bold text-gray-900">Financial Operations</h2>
+            </div>
+            <div class="h-1 w-16 rounded mb-8" style="background:#d4af37;"></div>
+
+            <p class="text-gray-600 mb-6 leading-relaxed">
+              The <strong>Deposits</strong> and <strong>Withdrawals</strong> tabs form your Financial Desk.
+              All client funding requests arrive here as <span class="badge" style="background:#fef3c7; color:#92400e;">Pending</span>
+              items. You review, verify, and approve or reject them. Database triggers handle all
+              balance adjustments automatically — no manual editing needed.
+            </p>
+
+            <!-- 4.1 Deposits -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">4.1 Processing Deposits</h3>
+
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mb-6">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Column</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Date</strong></td>
+                    <td>Submission timestamp</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Client</strong></td>
+                    <td>Trader's full name (links to their detail page)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Amount</strong></td>
+                    <td>USD amount requested</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Method</strong></td>
+                    <td>USDT TRC20, Bitcoin, or Bank Transfer</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Status</strong></td>
+                    <td>Pending / Approved / Rejected</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Detail</strong></td>
+                    <td>Opens the full transaction detail modal</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-8">
+              <div class="font-semibold text-gray-700 mb-4">Approving a Deposit</div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">1</span>
+                  <span class="text-sm text-gray-600">Click <strong>DETAIL</strong> on any pending deposit row.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">2</span>
+                  <span class="text-sm text-gray-600">The detail modal shows: amount, payment method, reference number, and the <strong>payment proof</strong> image or PDF (rendered inline).</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">3</span>
+                  <span class="text-sm text-gray-600">Verify the proof matches the declared amount and your payment gateway records.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">4</span>
+                  <span class="text-sm text-gray-600">Click <strong>Approve</strong>. The client's wallet balance is credited immediately via a database trigger. A real-time notification is sent to the trader.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5" style="background:#ef4444;">✕</span>
+                  <span class="text-sm text-gray-600">If the proof is invalid, click <strong>Reject</strong> instead. The balance is not touched; the trader is notified of the rejection.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4.2 Withdrawals -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">4.2 Processing Withdrawals</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              Withdrawal requests include the trader's destination details. NOKHBA displays sensitive
+              wallet addresses and IBANs in a secure truncated format in the table and the full details
+              in the modal.
+            </p>
+
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm mb-6">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Destination Type</th>
+                    <th>What you see</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Crypto wallet</td>
+                    <td>First 10 + last 6 characters of the address (monospace)</td>
+                  </tr>
+                  <tr>
+                    <td>Bank transfer</td>
+                    <td>Bank Name, Account Holder, masked IBAN</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="callout mb-8">
+              <p class="text-sm text-yellow-800">
+                <strong>Approval flow:</strong> Same as deposits — open DETAIL modal, verify destination, click Approve. On approval, the database trigger deducts the amount from the trader's balance. On rejection, no balance change occurs.
+              </p>
+            </div>
+
+            <!-- 4.3 Balance Adjustment -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">4.3 Manual Balance Adjustment</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              Sub-Admins can credit or debit a client's wallet directly from the Client Detail page —
+              useful for corrections, bonuses, or removing erroneous amounts. Balance adjustments
+              are visible only to Sub-Admins, not to sales reps.
+            </p>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-8">
+              <div class="font-semibold text-gray-700 mb-3">How to adjust a balance</div>
+              <ol class="space-y-2 text-sm text-gray-600 list-decimal list-inside">
+                <li>Navigate to the client's detail page (Clients tab → Manage →).</li>
+                <li>Locate the <strong>Balance Adjustment</strong> widget in the right CRM panel.</li>
+                <li>Enter a positive number (credit) or a negative number (debit) and add an optional note.</li>
+                <li>Click <strong>Apply</strong>. The wallet balance updates immediately.</li>
+              </ol>
+            </div>
+
+            <!-- 4.4 Subscription Payments -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">4.4 Your Subscription Payments</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              The <strong>Subscription</strong> tab shows your full payment history with NOKHBA and lets
+              you submit new subscription payments.
+            </p>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
+              <div class="font-semibold text-gray-700 mb-4">Submitting a subscription payment</div>
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">1</span>
+                  <span class="text-sm text-gray-600">Select your <strong>Billing Cycle</strong> (Monthly or Annual — annual saves 20%).</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">2</span>
+                  <span class="text-sm text-gray-600">Select your desired <strong>Market Access</strong>. The total cost is calculated live.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">3</span>
+                  <span class="text-sm text-gray-600">Choose a <strong>Payment Method</strong>. Your gateway addresses appear automatically with copy buttons.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">4</span>
+                  <span class="text-sm text-gray-600">Upload your <strong>Payment Proof</strong> (JPEG, PNG, WebP, or PDF).</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">5</span>
+                  <span class="text-sm text-gray-600">Click <strong>Submit</strong>. The NOKHBA master admin reviews your submission and activates or upgrades your plan.</span>
+                </div>
+              </div>
+            </div>
+
+            <h4 class="font-semibold text-gray-700 mb-3">Pricing Reference</h4>
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Plan Component</th>
+                    <th>Monthly USD</th>
+                    <th>Annual USD (−20%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Base (Crypto + Forex + Commodities)</td>
+                    <td>$300</td>
+                    <td>$2,880 / yr</td>
+                  </tr>
+                  <tr>
+                    <td>+ Global Indices &amp; Stocks</td>
+                    <td>+$100</td>
+                    <td>+$960 / yr</td>
+                  </tr>
+                  <tr>
+                    <td>+ Saudi &amp; Regional Markets</td>
+                    <td>+$300</td>
+                    <td>+$2,880 / yr</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Maximum (all markets)</strong></td>
+                    <td><strong>$700</strong></td>
+                    <td><strong>$6,720 / yr</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+
+          <!-- ── SECTION 5: PAYMENT SETTINGS ────────────────────── -->
+          <section id="payment-settings" class="mb-20 pt-16">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="step-circle text-base w-8 h-8">5</span>
+              <h2 class="text-3xl font-bold text-gray-900">Payment Settings</h2>
+            </div>
+            <div class="h-1 w-16 rounded mb-8" style="background:#d4af37;"></div>
+
+            <p class="text-gray-600 mb-6 leading-relaxed">
+              The <strong>Payment Settings</strong> tab lets you configure the wallet addresses and bank
+              details that your traders see when making deposits. You can override the platform's global
+              defaults with your own addresses for each payment method.
+            </p>
+
+            <!-- 5.1 Available Methods -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">5.1 Available Payment Methods</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                <div class="font-bold text-gray-800 mb-2">USDT (Tether)</div>
+                <ul class="text-sm text-gray-600 space-y-1">
+                  <li>Wallet Address</li>
+                  <li>Network: TRC20 / ERC20 / BEP20</li>
+                  <li>Active toggle</li>
+                </ul>
+              </div>
+              <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                <div class="font-bold text-gray-800 mb-2">Bitcoin (BTC)</div>
+                <ul class="text-sm text-gray-600 space-y-1">
+                  <li>Wallet Address (Legacy or SegWit)</li>
+                  <li>Active toggle</li>
+                </ul>
+              </div>
+              <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                <div class="font-bold text-gray-800 mb-2">Bank Transfer</div>
+                <ul class="text-sm text-gray-600 space-y-1">
+                  <li>Bank Name</li>
+                  <li>Account Holder</li>
+                  <li>RIB / IBAN</li>
+                  <li>Active toggle</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 5.2 How to Configure -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">5.2 How to Configure Gateways</h3>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">1</span>
+                  <span class="text-sm text-gray-600">Open the <strong>Payment Settings</strong> tab from your CRM sidebar.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">2</span>
+                  <span class="text-sm text-gray-600">For each method you want to activate, toggle the <strong>Active</strong> switch to on.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">3</span>
+                  <span class="text-sm text-gray-600">Fill in your wallet address or bank details in the provided fields.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">4</span>
+                  <span class="text-sm text-gray-600">Click <strong>Save Payment Settings</strong>. A <strong>✓ Saved Successfully</strong> confirmation appears.</span>
+                </div>
+                <div class="flex items-start gap-3">
+                  <span class="step-circle mt-0.5">5</span>
+                  <span class="text-sm text-gray-600">Your traders will see your configured addresses the next time they initiate a deposit — no restart or re-login required.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="callout mb-6">
+              <p class="text-sm text-yellow-800">
+                <strong>How addresses are inherited:</strong> If you have not configured a specific method, your traders will see the platform-level default addresses set by the NOKHBA master admin. Your settings always override the defaults when present.
+              </p>
+            </div>
+
+            <!-- 5.3 Trial Restriction -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">5.3 Trial Plan Restriction</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              During the <strong>1-Day Free Trial</strong>, the Payment Settings tab is visible but all
+              input fields are disabled. An information banner reads:
+            </p>
+            <div class="bg-gray-100 border border-gray-300 rounded-lg p-4 text-sm text-gray-700 italic mb-6">
+              "Option not allowed in the Trial Plan."
+            </div>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              To unlock Payment Settings configuration, submit a subscription payment to upgrade your
+              plan from Trial to Standard or VIP.
+            </p>
+
+            <!-- 5.4 Security Note -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">5.4 Security &amp; Best Practices</h3>
+
+            <div class="space-y-3 mb-6">
+              <div class="callout-blue">
+                <p class="text-sm text-blue-800">
+                  <strong>Double-check wallet addresses:</strong> Payment proof images cannot prove a transaction went to your address if the displayed address is wrong. Always verify your saved address after entering it.
+                </p>
+              </div>
+              <div class="callout-blue">
+                <p class="text-sm text-blue-800">
+                  <strong>Disable unused methods:</strong> If you only accept USDT, toggle Bitcoin and Bank Transfer to <em>inactive</em>. This prevents traders from selecting a method you don't support.
+                </p>
+              </div>
+              <div class="callout-blue">
+                <p class="text-sm text-blue-800">
+                  <strong>Update promptly on address changes:</strong> If your wallet address changes (e.g. exchange migration), update it here immediately and inform any traders with in-flight transactions.
+                </p>
+              </div>
+            </div>
+
+            <!-- 5.5 Password Security -->
+            <h3 class="text-xl font-semibold text-gray-800 mb-3">5.5 Client Password Security</h3>
+            <p class="text-gray-600 mb-4 leading-relaxed">
+              NOKHBA stores trader passwords using AES-256-CBC encryption with a random IV. Sub-Admins
+              can reveal a client's current password from the Client Detail page using the
+              <strong>Password</strong> field with the eye icon — useful for onboarding support without
+              requiring a password reset flow.
+            </p>
+
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>How</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Reveal current password</td>
+                    <td>Click the 👁 eye icon on the Password field</td>
+                  </tr>
+                  <tr>
+                    <td>Copy password to clipboard</td>
+                    <td>Click the copy icon next to the revealed password</td>
+                  </tr>
+                  <tr>
+                    <td>Set a new password</td>
+                    <td>Enter a new value in the <strong>New Password</strong> field and click <strong>Reset Password</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </section>
+
+          <!-- Footer spacer -->
+          <div class="pb-20"></div>
+
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // Smooth scroll
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+          e.preventDefault();
+          const section = document.querySelector(this.getAttribute('href'));
+          if (!section) return;
+          const y = section.getBoundingClientRect().top + window.pageYOffset - 24;
+          window.scrollTo({ top: y, behavior: 'smooth' });
+        });
+      });
+
+      // Active section highlighting
+      const mainEl = document.querySelector('main');
+      mainEl.addEventListener('scroll', () => {
+        let current = '';
+        document.querySelectorAll('section[id]').forEach(section => {
+          if (mainEl.scrollTop >= section.offsetTop - 80) {
+            current = section.getAttribute('id');
+          }
+        });
+        document.querySelectorAll('nav a').forEach(a => {
+          a.classList.remove('bg-gray-800', 'text-yellow-400');
+          if (a.getAttribute('href') === `#${current}`) {
+            a.classList.add('bg-gray-800', 'text-yellow-400');
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

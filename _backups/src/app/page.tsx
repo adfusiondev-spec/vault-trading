@@ -8,7 +8,7 @@ export default function LandingPage() {
   const { t } = useTranslation()
 
   return (
-    <div className="nk-page-shell" style={{
+    <div style={{
       height: '100vh', width: '100vw', overflow: 'hidden',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: '#0b0e11', fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -16,7 +16,7 @@ export default function LandingPage() {
     }}>
 
       {/* Background ambient glow */}
-      <div className="nk-bg-glow" style={{
+      <div style={{
         position: 'absolute', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
         width: 800, height: 800,
@@ -25,7 +25,7 @@ export default function LandingPage() {
       }} />
 
       {/* Top-right login link */}
-      <div className="nk-corner-link" style={{ position: 'absolute', top: 28, right: 36 }}>
+      <div style={{ position: 'absolute', top: 28, right: 36 }}>
         <Link href="/login" style={{
           color: '#8a8e9b', fontSize: 14, letterSpacing: '0.04em',
           textDecoration: 'none', fontWeight: 500,
@@ -37,7 +37,7 @@ export default function LandingPage() {
       </div>
 
       {/* Centre content */}
-      <div className="landing-content nk-landing-content" style={{
+      <div className="landing-content" style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         gap: 0, position: 'relative', zIndex: 1,
         animation: 'fadeUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) both',
@@ -54,7 +54,7 @@ export default function LandingPage() {
         </div>
 
         {/* Title */}
-        <h1 className="nk-auth-title" style={{
+        <h1 style={{
           fontWeight: 800, fontSize: 42, letterSpacing: '0.22em',
           margin: 0, lineHeight: 1,
           textTransform: 'uppercase',
@@ -63,7 +63,7 @@ export default function LandingPage() {
         </h1>
 
         {/* Tagline */}
-        <p className="nk-auth-tagline" style={{
+        <p style={{
           color: '#8a8e9b', fontSize: 11, letterSpacing: '0.18em',
           fontWeight: 600, margin: '14px 0 0',
           textTransform: 'uppercase',
@@ -79,7 +79,7 @@ export default function LandingPage() {
         }} />
 
         {/* CTA button */}
-        <Link href="/signup" className="nk-cta-button" style={{
+        <Link href="/signup" style={{
           display: 'inline-flex', alignItems: 'center', gap: 10,
           padding: '16px 40px', borderRadius: 8,
           background: '#FFD700', color: '#000',
